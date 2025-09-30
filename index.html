@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打卡系统</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <i class="fas fa-home"></i>
+                <span>家庭任务管理</span>
+            </div>
+        </nav>
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <!-- 家庭任务页面 -->
+            <div id="family-page" class="page active">
+                <div class="family-header">
+                    <div class="date-display">
+                        <div class="current-date" id="current-date"></div>
+                        <div class="current-day" id="current-day"></div>
+                    </div>
+                    <div class="family-actions">
+                        <button id="stats-btn" class="btn btn-cool">
+                            <i class="fas fa-chart-bar"></i>
+                            任务统计
+                        </button>
+                        <button id="calendar-btn" class="btn btn-cool">
+                            <i class="fas fa-calendar-alt"></i>
+                            日历计划
+                        </button>
+                        <button id="add-member-btn" class="btn btn-cool">
+                            <i class="fas fa-user-plus"></i>
+                            添加成员
+                        </button>
+                        <button id="add-family-task-btn" class="btn btn-cool">
+                            <i class="fas fa-plus"></i>
+                            添加任务
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="family-members-container" id="family-members-container">
+                    <!-- 家庭成员卡片将在这里动态生成 -->
+                </div>
+                
+                <div class="pagination">
+                    <button id="prev-page" class="btn btn-outline" disabled>
+                        <i class="fas fa-chevron-left"></i>
+                        上一页
+                    </button>
+                    <span id="page-info">1 / 1</span>
+                    <button id="next-page" class="btn btn-outline" disabled>
+                        下一页
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 日历计划页面 -->
+            <div id="calendar-page" class="page">
+                <div class="calendar-header">
+                    <button id="back-to-main" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i>
+                        返回主页
+                    </button>
+                    <h2>日历任务计划</h2>
+                </div>
+                
+                <div class="calendar-container">
+                    <div class="calendar-controls">
+                        <div class="member-selector">
+                            <label for="calendar-member-select">选择成员：</label>
+                            <select id="calendar-member-select">
+                                <option value="">请选择成员</option>
+                            </select>
+                        </div>
+                        
+                        <div class="time-range-selector">
+                            <label>
+                                <input type="radio" name="calendarView" value="week" checked>
+                                周视图
+                            </label>
+                            <label>
+                                <input type="radio" name="calendarView" value="month">
+                                月视图
+                            </label>
+                        </div>
+                        
+                        <div class="calendar-navigation">
+                            <button id="prev-period" class="btn btn-outline">
+                                <i class="fas fa-chevron-left"></i>
+                                上一周
+                            </button>
+                            <button id="back-to-current" class="btn btn-cool">
+                                <i class="fas fa-home"></i>
+                                回到当前
+                            </button>
+                            <span id="current-period-display"></span>
+                            <button id="next-period" class="btn btn-outline">
+                                下一周
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-grid-container">
+                        <div id="calendar-grid" class="calendar-grid"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 任务统计页面 -->
+            <div id="stats-page" class="page">
+                <div class="stats-header">
+                    <button id="back-to-main-from-stats" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i>
+                        返回主页
+                    </button>
+                    <h2>任务完成统计</h2>
+                </div>
+                
+                <div class="stats-container">
+                    <div class="stats-controls">
+                        <div class="member-selector">
+                            <label for="stats-member-select">选择成员：</label>
+                            <select id="stats-member-select">
+                                <option value="">请选择成员</option>
+                            </select>
+                        </div>
+                        
+                        <div class="time-range-selector">
+                            <label>
+                                <input type="radio" name="statsView" value="week" checked>
+                                周统计
+                            </label>
+                            <label>
+                                <input type="radio" name="statsView" value="month">
+                                月统计
+                            </label>
+                        </div>
+                        
+                        <div class="stats-navigation">
+                            <button id="prev-stats-period" class="btn btn-outline">
+                                <i class="fas fa-chevron-left"></i>
+                                上一周
+                            </button>
+                            <button id="back-to-current-stats" class="btn btn-cool">
+                                <i class="fas fa-home"></i>
+                                回到当前
+                            </button>
+                            <span id="current-stats-period-display"></span>
+                            <button id="next-stats-period" class="btn btn-outline">
+                                下一周
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-content">
+                        <div id="stats-summary" class="stats-summary">
+                            <div class="no-member-selected">
+                                <i class="fas fa-user-check"></i>
+                                请选择成员查看统计
+                            </div>
+                        </div>
+                        
+                        <div id="stats-task-list" class="stats-task-list">
+                            <!-- 任务完成统计列表将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 添加任务到日期模态框 -->
+            <div id="date-task-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="date-task-modal-title">添加任务</h3>
+                        <button class="close-btn" data-modal="date-task-modal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <form id="date-task-form">
+                        <div class="form-group">
+                            <label for="date-task-title">任务标题</label>
+                            <input type="text" id="date-task-title" required placeholder="请输入任务标题">
+                        </div>
+                        <div class="form-group">
+                            <label for="date-task-priority">优先级</label>
+                            <select id="date-task-priority" required>
+                                <option value="high">🔴 高</option>
+                                <option value="medium" selected>🟡 中</option>
+                                <option value="low">🟢 低</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enable-repeat">
+                                开启重复功能
+                            </label>
+                        </div>
+                        <div id="repeat-options" class="repeat-options" style="display: none;">
+                            <div class="form-group">
+                                <label for="repeat-type">重复类型</label>
+                                <select id="repeat-type">
+                                    <option value="daily">每天</option>
+                                    <option value="weekly" selected>每周</option>
+                                    <option value="biweekly">每两周</option>
+                                    <option value="monthly">每月</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="daily-interval-group" style="display: none;">
+                                <label for="daily-interval">每几天重复</label>
+                                <input type="number" id="daily-interval" min="1" max="30" value="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="repeat-count">重复次数</label>
+                                <input type="number" id="repeat-count" min="1" max="52" value="4">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" data-modal="date-task-modal">取消</button>
+                            <button type="submit" class="btn btn-cool">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 模态框 -->
+    <!-- 添加成员模态框 -->
+    <div id="member-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="member-modal-title">添加家庭成员</h3>
+                <button class="close-btn" data-modal="member-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="member-form">
+                <div class="form-group">
+                    <label for="member-name">姓名</label>
+                    <input type="text" id="member-name" required placeholder="请输入姓名">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-modal="member-modal">取消</button>
+                    <button type="submit" class="btn btn-cool">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 添加任务模态框 -->
+    <div id="family-task-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="family-task-modal-title">添加任务</h3>
+                <button class="close-btn" data-modal="family-task-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="family-task-form">
+                <div class="form-group">
+                    <label for="family-task-title">任务标题</label>
+                    <input type="text" id="family-task-title" required placeholder="请输入任务标题">
+                </div>
+                <div class="form-group">
+                    <label for="family-task-assignee">分配给</label>
+                    <select id="family-task-assignee" required>
+                        <option value="">请选择成员</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="family-task-priority">优先级</label>
+                    <select id="family-task-priority" required>
+                        <option value="high">🔴 高</option>
+                        <option value="medium" selected>🟡 中</option>
+                        <option value="low">🟢 低</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-modal="family-task-modal">取消</button>
+                    <button type="submit" class="btn btn-cool">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
