@@ -35,6 +35,10 @@
                             <i class="fas fa-calendar-alt"></i>
                             日历计划
                         </button>
+                        <button id="memory-btn" class="btn btn-cool">
+                            <i class="fas fa-brain"></i>
+                            我的背诵
+                        </button>
                         <button id="add-member-btn" class="btn btn-cool">
                             <i class="fas fa-user-plus"></i>
                             添加成员
@@ -178,6 +182,58 @@
                 </div>
             </div>
             
+            <!-- 我的背诵页面 -->
+            <div id="memory-page" class="page">
+                <div class="memory-header">
+                    <button id="back-to-main-from-memory" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i>
+                        返回主页
+                    </button>
+                    <h2>我的背诵</h2>
+                </div>
+                
+                <div class="memory-container">
+                    <div class="memory-controls">
+                        <div class="member-buttons">
+                            <label>选择成员：</label>
+                            <div id="memory-member-buttons" class="member-button-group">
+                                <!-- 成员按钮将在这里动态生成 -->
+                            </div>
+                        </div>
+                        
+                        <div class="memory-actions">
+                            <button id="memory-history-btn" class="btn btn-outline" disabled>
+                                <i class="fas fa-history"></i>
+                                历史记录
+                            </button>
+                            <button id="add-memory-btn" class="btn btn-cool" disabled>
+                                <i class="fas fa-plus"></i>
+                                添加背诵内容
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="memory-content">
+                        <div id="memory-today-section" class="memory-section">
+                            <h3>今日背诵</h3>
+                            <div id="memory-today-list" class="memory-card-list">
+                                <div class="no-member-selected">
+                                    <i class="fas fa-user-graduate"></i>
+                                    <p>请选择成员查看背诵内容</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="memory-completed-section" class="memory-section">
+                            <h3>已背诵 <button id="toggle-completed" class="btn btn-small btn-outline">展开/收起</button></h3>
+                            <div id="memory-completed-list" class="memory-card-list" style="display: none;">
+                                <!-- 已背诵内容将在这里显示 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 添加任务到日期模态框 -->
             <div id="date-task-modal" class="modal">
                 <div class="modal-content">
@@ -230,6 +286,76 @@
                             <button type="submit" class="btn btn-cool">保存</button>
                         </div>
                     </form>
+                </div>
+            </div>
+            
+            <!-- 添加背诵内容模态框 -->
+            <div id="memory-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="memory-modal-title">添加背诵内容</h3>
+                        <button class="close-btn" data-modal="memory-modal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <form id="memory-form">
+                        <div class="form-group">
+                            <label for="memory-title">标题</label>
+                            <input type="text" id="memory-title" required placeholder="请输入背诵内容标题">
+                        </div>
+                        <div class="form-group">
+                            <label for="memory-content">背诵内容</label>
+                            <textarea id="memory-content" required placeholder="请输入要背诵的内容" rows="8"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="memory-date">开始日期</label>
+                            <input type="date" id="memory-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="memory-priority">优先级</label>
+                            <select id="memory-priority" required>
+                                <option value="high">🔴 高</option>
+                                <option value="medium" selected>🟡 中</option>
+                                <option value="low">🟢 低</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" data-modal="memory-modal">取消</button>
+                            <button type="submit" class="btn btn-cool">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 背诵历史记录模态框 -->
+            <div id="memory-history-modal" class="modal">
+                <div class="modal-content modal-large">
+                    <div class="modal-header">
+                        <h3 id="memory-history-modal-title">背诵历史记录</h3>
+                        <button class="close-btn" data-modal="memory-history-modal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="memory-history-container">
+                        <div class="memory-history-nav">
+                            <button id="prev-memory-month" class="btn btn-outline">
+                                <i class="fas fa-chevron-left"></i>
+                                上个月
+                            </button>
+                            <button id="current-memory-month" class="btn btn-cool">
+                                <i class="fas fa-home"></i>
+                                当前月
+                            </button>
+                            <span id="current-memory-month-display"></span>
+                            <button id="next-memory-month" class="btn btn-outline">
+                                下个月
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <div id="memory-history-calendar" class="memory-calendar-grid">
+                            <!-- 日历网格将在这里动态生成 -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

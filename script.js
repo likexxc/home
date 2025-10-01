@@ -3,11 +3,15 @@ class FamilyTaskSystem {
     constructor() {
         this.members = [];
         this.familyTasks = [];
+        this.memoryCards = []; // 新增：背诵卡片数据
         this.currentPage = 0;
         this.membersPerPage = 3;
         this.currentEditingMember = null;
         this.currentEditingTask = null;
+        this.currentEditingMemory = null; // 新增：当前编辑的背诵内容
         this.selectedMemberId = null;
+        this.selectedMemoryMemberId = null; // 新增：选中的背诵成员ID
+        this.currentMemoryHistoryDate = new Date(); // 新增：历史记录当前查看的月份
         this.currentCalendarDate = new Date();
         this.calendarView = 'week';
         this.selectedDate = null;
@@ -108,6 +112,7 @@ class FamilyTaskSystem {
         if (data.lastUpdated && data.lastUpdated !== this.lastSyncTime) {
             this.members = data.familyMembers || [];
             this.familyTasks = data.familyTasks || [];
+            this.memoryCards = data.memoryCards || [];
             this.lastSyncTime = data.lastUpdated;
             
             // 刷新界面
@@ -123,6 +128,12 @@ class FamilyTaskSystem {
             // 如果当前在统计页面，更新统计
             if (document.getElementById('stats-page').classList.contains('active')) {
                 this.renderStats();
+            }
+            
+            // 如果当前在背诵页面，更新背诵
+            if (document.getElementById('memory-page').classList.contains('active')) {
+                this.updateMemoryMemberOptions();
+                this.renderMemoryCards();
             }
             
             console.log('数据已实时同步');
@@ -147,16 +158,17 @@ class FamilyTaskSystem {
                 const data = await response.json();
                 this.members = data.familyMembers || [];
                 this.familyTasks = data.familyTasks || [];
+                this.memoryCards = data.memoryCards || [];
                 this.lastSyncTime = data.lastUpdated;
                 
                 // 只有在服务器上确实没有任何数据时才初始化默认数据
                 // 避免覆盖用户已有的数据
-                if (this.members.length === 0 && this.familyTasks.length === 0 && !data.lastUpdated) {
+                if (this.members.length === 0 && this.familyTasks.length === 0 && this.memoryCards.length === 0 && !data.lastUpdated) {
                     console.log('服务器无数据，初始化默认数据');
                     this.initializeDefaultData();
                     await this.saveDataToServer();
                 } else {
-                    console.log('从服务器加载数据成功:', this.members.length, '个成员,', this.familyTasks.length, '个任务');
+                    console.log('从服务器加载数据成功:', this.members.length, '个成员,', this.familyTasks.length, '个任务,', this.memoryCards.length, '个背诵卡片');
                 }
             } else {
                 console.warn('无法从服务器加载数据，使用本地数据');
@@ -172,14 +184,15 @@ class FamilyTaskSystem {
     loadDataFromLocal() {
         this.members = JSON.parse(localStorage.getItem('familyMembers')) || [];
         this.familyTasks = JSON.parse(localStorage.getItem('familyTasks')) || [];
+        this.memoryCards = JSON.parse(localStorage.getItem('memoryCards')) || [];
         
         // 只有在本地确实没有任何数据时才初始化默认数据
-        if (this.members.length === 0 && this.familyTasks.length === 0) {
+        if (this.members.length === 0 && this.familyTasks.length === 0 && this.memoryCards.length === 0) {
             console.log('本地无数据，初始化默认数据');
             this.initializeDefaultData();
             this.saveDataToLocal();
         } else {
-            console.log('从本地加载数据成功:', this.members.length, '个成员,', this.familyTasks.length, '个任务');
+            console.log('从本地加载数据成功:', this.members.length, '个成员,', this.familyTasks.length, '个任务,', this.memoryCards.length, '个背诵卡片');
         }
     }
 
@@ -196,6 +209,7 @@ class FamilyTaskSystem {
             { id: 'task002', title: '完成数学作业', assignee: 'mem003', assigneeName: '小明', priority: 'high', status: 'todo', createdAt: new Date().toISOString() },
             { id: 'task003', title: '整理房间', assignee: 'mem004', assigneeName: '小红', priority: 'low', status: 'completed', createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), completedAt: new Date().toISOString() }
         ];
+        this.memoryCards = [];
     }
 
     // 同步数据从服务器（定时检查更新）
@@ -210,9 +224,10 @@ class FamilyTaskSystem {
                 // 检查数据是否有更新
                 if (data.lastUpdated && data.lastUpdated !== this.lastSyncTime) {
                     // 只有在服务器有真实数据时才同步
-                    if (data.familyMembers || data.familyTasks) {
+                    if (data.familyMembers || data.familyTasks || data.memoryCards) {
                         this.members = data.familyMembers || [];
                         this.familyTasks = data.familyTasks || [];
+                        this.memoryCards = data.memoryCards || [];
                         this.lastSyncTime = data.lastUpdated;
                         
                         // 刷新界面
@@ -230,7 +245,13 @@ class FamilyTaskSystem {
                             this.renderStats();
                         }
                         
-                        console.log('数据已实时同步:', this.members.length, '个成员,', this.familyTasks.length, '个任务');
+                        // 如果当前在背诵页面，更新背诵
+                        if (document.getElementById('memory-page').classList.contains('active')) {
+                            this.updateMemoryMemberOptions();
+                            this.renderMemoryCards();
+                        }
+                        
+                        console.log('数据已实时同步:', this.members.length, '个成员,', this.familyTasks.length, '个任务,', this.memoryCards.length, '个背诵卡片');
                     }
                 }
             }
@@ -252,7 +273,8 @@ class FamilyTaskSystem {
         try {
             const data = {
                 familyMembers: this.members,
-                familyTasks: this.familyTasks
+                familyTasks: this.familyTasks,
+                memoryCards: this.memoryCards
             };
             
             const response = await fetch('/api/data', {
@@ -280,6 +302,7 @@ class FamilyTaskSystem {
     saveDataToLocal() {
         localStorage.setItem('familyMembers', JSON.stringify(this.members));
         localStorage.setItem('familyTasks', JSON.stringify(this.familyTasks));
+        localStorage.setItem('memoryCards', JSON.stringify(this.memoryCards));
     }
 
     setupEventListeners() {
@@ -288,11 +311,20 @@ class FamilyTaskSystem {
         document.getElementById('add-family-task-btn').addEventListener('click', () => this.showFamilyTaskModal());
         document.getElementById('family-task-form').addEventListener('submit', (e) => this.handleFamilyTaskSubmit(e));
         document.getElementById('calendar-btn').addEventListener('click', () => this.showCalendarPage());
+        document.getElementById('memory-btn').addEventListener('click', () => this.showMemoryPage());
         document.getElementById('stats-btn').addEventListener('click', () => this.showStatsPage());
         document.getElementById('back-to-main').addEventListener('click', () => this.showMainPage());
         document.getElementById('back-to-main-from-stats').addEventListener('click', () => this.showMainPage());
+        document.getElementById('back-to-main-from-memory').addEventListener('click', () => this.showMainPage());
         document.getElementById('calendar-member-select').addEventListener('change', (e) => this.onMemberChange(e));
         document.getElementById('stats-member-select').addEventListener('change', (e) => this.onStatsMemberChange(e));
+        document.getElementById('add-memory-btn').addEventListener('click', () => this.showMemoryModal());
+        document.getElementById('memory-history-btn').addEventListener('click', () => this.showMemoryHistoryModal());
+        document.getElementById('memory-form').addEventListener('submit', (e) => this.handleMemorySubmit(e));
+        document.getElementById('toggle-completed').addEventListener('click', () => this.toggleCompletedMemories());
+        document.getElementById('prev-memory-month').addEventListener('click', () => this.changeMemoryHistoryMonth(-1));
+        document.getElementById('next-memory-month').addEventListener('click', () => this.changeMemoryHistoryMonth(1));
+        document.getElementById('current-memory-month').addEventListener('click', () => this.backToCurrentMemoryMonth());
         document.querySelectorAll('input[name="calendarView"]').forEach(radio => {
             radio.addEventListener('change', (e) => this.onViewChange(e));
         });
@@ -342,6 +374,7 @@ class FamilyTaskSystem {
     showMainPage() {
         document.getElementById('calendar-page').classList.remove('active');
         document.getElementById('stats-page').classList.remove('active');
+        document.getElementById('memory-page').classList.remove('active');
         document.getElementById('family-page').classList.add('active');
         this.updateDateTime();
         this.loadFamilyData();
@@ -855,6 +888,7 @@ class FamilyTaskSystem {
         document.getElementById(modalId).classList.remove('active');
         this.currentEditingMember = null;
         this.currentEditingTask = null;
+        this.currentEditingMemory = null;
     }
 
     showNotification(message, type) {
@@ -1020,6 +1054,402 @@ class FamilyTaskSystem {
             if (!task.completedAt) return false;
             var completedDate = new Date(task.completedAt);
             return completedDate >= periodStart && completedDate <= periodEnd;
+        });
+    }
+
+    // ====== 背诵功能 ======
+    
+    // 显示背诵页面
+    showMemoryPage() {
+        document.getElementById('family-page').classList.remove('active');
+        document.getElementById('calendar-page').classList.remove('active');
+        document.getElementById('stats-page').classList.remove('active');
+        document.getElementById('memory-page').classList.add('active');
+        this.updateMemoryMemberOptions();
+        this.selectedMemoryMemberId = null;
+        document.getElementById('add-memory-btn').disabled = true;
+        document.getElementById('memory-history-btn').disabled = true;
+        this.renderMemoryCards();
+    }
+    
+    // 更新背诵页面成员按钮
+    updateMemoryMemberOptions() {
+        var container = document.getElementById('memory-member-buttons');
+        container.innerHTML = '';
+        
+        if (this.members.length === 0) {
+            container.innerHTML = '<div class="no-members">暂无成员</div>';
+            return;
+        }
+        
+        this.members.forEach(member => {
+            var button = document.createElement('button');
+            button.className = 'btn btn-outline member-btn';
+            button.textContent = member.name;
+            button.onclick = () => this.selectMemoryMember(member.id);
+            container.appendChild(button);
+        });
+    }
+    
+    // 选择背诵成员
+    selectMemoryMember(memberId) {
+        this.selectedMemoryMemberId = memberId;
+        
+        // 更新按钮状态
+        document.querySelectorAll('.member-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        var selectedBtn = Array.from(document.querySelectorAll('.member-btn')).find(btn => {
+            return btn.textContent === this.getMemberName(memberId);
+        });
+        if (selectedBtn) {
+            selectedBtn.classList.add('active');
+        }
+        
+        document.getElementById('add-memory-btn').disabled = false;
+        document.getElementById('memory-history-btn').disabled = false;
+        this.renderMemoryCards();
+    }
+    
+    // 渲染背诵卡片
+    renderMemoryCards() {
+        var todayList = document.getElementById('memory-today-list');
+        var completedList = document.getElementById('memory-completed-list');
+        
+        if (!this.selectedMemoryMemberId) {
+            todayList.innerHTML = '<div class="no-member-selected"><i class="fas fa-user-graduate"></i><p>请选择成员查看背诵内容</p></div>';
+            completedList.innerHTML = '';
+            return;
+        }
+        
+        var memberName = this.getMemberName(this.selectedMemoryMemberId);
+        var today = new Date();
+        
+        // 获取今日需要背诵的卡片
+        var todayCards = this.getTodayMemoryCards(this.selectedMemoryMemberId, today);
+        var completedCards = this.getCompletedMemoryCards(this.selectedMemoryMemberId);
+        
+        // 渲染今日背诵
+        if (todayCards.length === 0) {
+            todayList.innerHTML = '<div class="memory-empty"><i class="fas fa-book-open"></i><p>' + memberName + ' 今日暂无背诵任务</p></div>';
+        } else {
+            todayList.innerHTML = todayCards.map(card => this.createMemoryCardElement(card, false)).join('');
+        }
+        
+        // 渲染已背诵
+        if (completedCards.length === 0) {
+            completedList.innerHTML = '<div class="memory-empty"><i class="fas fa-check-circle"></i><p>暂无已背诵内容</p></div>';
+        } else {
+            completedList.innerHTML = completedCards.map(card => this.createMemoryCardElement(card, true)).join('');
+        }
+    }
+    
+    // 获取今日需要背诵的卡片
+    getTodayMemoryCards(memberId, today) {
+        var memoryIntervals = [1, 2, 3, 5, 8, 16, 31, 61, 91, 181]; // 修改为第1天开始
+        
+        return this.memoryCards.filter(card => {
+            if (card.assignee !== memberId || card.isCompleted) return false;
+            
+            var startDate = new Date(card.startDate);
+            startDate.setHours(0, 0, 0, 0);
+            var todayDate = new Date(today);
+            todayDate.setHours(0, 0, 0, 0);
+            
+            var daysDiff = Math.floor((todayDate - startDate) / (1000 * 60 * 60 * 24)) + 1; // +1 让开始日期为第1天
+            return memoryIntervals.includes(daysDiff);
+        }).sort((a, b) => {
+            var priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+            return priorityOrder[b.priority] - priorityOrder[a.priority];
+        });
+    }
+    
+    // 获取已背诵的卡片
+    getCompletedMemoryCards(memberId) {
+        return this.memoryCards.filter(card => {
+            return card.assignee === memberId && card.isCompleted;
+        }).sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+    }
+    
+    // 创建背诵卡片元素
+    createMemoryCardElement(card, isCompleted) {
+        var priorityEmoji = { 'high': '🔴', 'medium': '🟡', 'low': '🟢' };
+        var daysSinceStart = Math.floor((new Date() - new Date(card.startDate)) / (1000 * 60 * 60 * 24)) + 1; // +1 让开始日期为第1天
+        
+        var actionsHtml = '';
+        if (!isCompleted) {
+            actionsHtml = 
+                '<div class="memory-card-actions">' +
+                    '<button class="btn btn-small btn-cool" onclick="familyTaskSystem.markMemoryCompleted(\'' + card.id + '\')" title="已背诵">' +
+                        '<i class="fas fa-check"></i> 已背诵' +
+                    '</button>' +
+                    '<button class="btn btn-small btn-danger" onclick="familyTaskSystem.deleteMemoryCard(\'' + card.id + '\')" title="删除">' +
+                        '<i class="fas fa-trash"></i>' +
+                    '</button>' +
+                '</div>';
+        } else {
+            actionsHtml = 
+                '<div class="memory-card-actions">' +
+                    '<button class="btn btn-small btn-outline" onclick="familyTaskSystem.markMemoryUncompleted(\'' + card.id + '\')" title="重新激活">' +
+                        '<i class="fas fa-redo"></i> 重新背诵' +
+                    '</button>' +
+                    '<button class="btn btn-small btn-danger" onclick="familyTaskSystem.deleteMemoryCard(\'' + card.id + '\')" title="删除">' +
+                        '<i class="fas fa-trash"></i>' +
+                    '</button>' +
+                '</div>';
+        }
+        
+        return '<div class="memory-card priority-' + card.priority + (isCompleted ? ' completed' : '') + '">' +
+                '<div class="memory-card-header">' +
+                    '<div class="memory-card-title">' + card.title + '</div>' +
+                    '<div class="memory-card-meta">' +
+                        '<span class="priority-badge priority-' + card.priority + '">' + priorityEmoji[card.priority] + '</span>' +
+                        '<span class="days-badge">第' + daysSinceStart + '天</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="memory-card-content">' + card.content.substring(0, 100) + (card.content.length > 100 ? '...' : '') + '</div>' +
+                '<div class="memory-card-footer">' +
+                    '<div class="memory-card-date">开始：' + new Date(card.startDate).toLocaleDateString() + '</div>' +
+                    actionsHtml +
+                '</div>' +
+            '</div>';
+    }
+    
+    // 显示背诵模态框
+    showMemoryModal(cardId = null) {
+        this.currentEditingMemory = cardId ? this.memoryCards.find(c => c.id === cardId) : null;
+        var modal = document.getElementById('memory-modal');
+        var title = document.getElementById('memory-modal-title');
+        var form = document.getElementById('memory-form');
+        
+        if (this.currentEditingMemory) {
+            title.textContent = '编辑背诵内容';
+            document.getElementById('memory-title').value = this.currentEditingMemory.title;
+            document.getElementById('memory-content').value = this.currentEditingMemory.content;
+            document.getElementById('memory-date').value = this.currentEditingMemory.startDate.split('T')[0];
+            document.getElementById('memory-priority').value = this.currentEditingMemory.priority;
+        } else {
+            title.textContent = '添加背诵内容';
+            form.reset();
+            document.getElementById('memory-date').value = new Date().toISOString().split('T')[0];
+        }
+        
+        modal.classList.add('active');
+    }
+    
+    // 处理背诵表单提交
+    handleMemorySubmit(e) {
+        e.preventDefault();
+        
+        if (!this.selectedMemoryMemberId) {
+            this.showNotification('请先选择成员', 'warning');
+            return;
+        }
+        
+        var formData = {
+            id: this.currentEditingMemory ? this.currentEditingMemory.id : this.generateId(),
+            title: document.getElementById('memory-title').value,
+            content: document.getElementById('memory-content').value,
+            startDate: document.getElementById('memory-date').value + 'T00:00:00.000Z',
+            priority: document.getElementById('memory-priority').value,
+            assignee: this.selectedMemoryMemberId,
+            assigneeName: this.getMemberName(this.selectedMemoryMemberId),
+            isCompleted: this.currentEditingMemory ? this.currentEditingMemory.isCompleted : false,
+            createdAt: this.currentEditingMemory ? this.currentEditingMemory.createdAt : new Date().toISOString()
+        };
+        
+        if (this.currentEditingMemory) {
+            var index = this.memoryCards.findIndex(c => c.id === this.currentEditingMemory.id);
+            if (index !== -1) this.memoryCards[index] = formData;
+        } else {
+            this.memoryCards.push(formData);
+        }
+        
+        this.saveData();
+        this.renderMemoryCards();
+        this.closeModal('memory-modal');
+        this.showNotification(this.currentEditingMemory ? '背诵内容更新成功' : '背诵内容添加成功', 'success');
+    }
+    
+    // 标记为已背诵
+    markMemoryCompleted(cardId) {
+        var card = this.memoryCards.find(c => c.id === cardId);
+        if (card) {
+            card.isCompleted = true;
+            card.completedAt = new Date().toISOString();
+            this.saveData();
+            this.renderMemoryCards();
+            this.showNotification('已标记为背诵完成', 'success');
+        }
+    }
+    
+    // 标记为未背诵
+    markMemoryUncompleted(cardId) {
+        var card = this.memoryCards.find(c => c.id === cardId);
+        if (card) {
+            card.isCompleted = false;
+            delete card.completedAt;
+            this.saveData();
+            this.renderMemoryCards();
+            this.showNotification('已重新激活背诵任务', 'success');
+        }
+    }
+    
+    // 删除背诵卡片
+    deleteMemoryCard(cardId) {
+        if (confirm('确定要删除这个背诵内容吗？')) {
+            this.memoryCards = this.memoryCards.filter(c => c.id !== cardId);
+            this.saveData();
+            this.renderMemoryCards();
+            this.showNotification('背诵内容删除成功', 'success');
+        }
+    }
+    
+    // 切换已背诵列表显示
+    toggleCompletedMemories() {
+        var completedList = document.getElementById('memory-completed-list');
+        var button = document.getElementById('toggle-completed');
+        
+        if (completedList.style.display === 'none') {
+            completedList.style.display = 'block';
+            button.textContent = '收起';
+        } else {
+            completedList.style.display = 'none';
+            button.textContent = '展开';
+        }
+    }
+    
+    // 显示背诵历史记录模态框
+    showMemoryHistoryModal() {
+        if (!this.selectedMemoryMemberId) {
+            this.showNotification('请先选择成员', 'warning');
+            return;
+        }
+        
+        var modal = document.getElementById('memory-history-modal');
+        var title = document.getElementById('memory-history-modal-title');
+        var memberName = this.getMemberName(this.selectedMemoryMemberId);
+        
+        title.textContent = memberName + ' 的背诵历史记录';
+        this.currentMemoryHistoryDate = new Date();
+        this.updateMemoryHistoryNavigation();
+        this.renderMemoryHistoryCalendar();
+        
+        modal.classList.add('active');
+    }
+    
+    // 更新历史记录导航
+    updateMemoryHistoryNavigation() {
+        var display = document.getElementById('current-memory-month-display');
+        display.textContent = this.currentMemoryHistoryDate.toLocaleDateString('zh-CN', { 
+            year: 'numeric', 
+            month: 'long' 
+        });
+    }
+    
+    // 切换历史记录月份
+    changeMemoryHistoryMonth(direction) {
+        this.currentMemoryHistoryDate.setMonth(this.currentMemoryHistoryDate.getMonth() + direction);
+        this.updateMemoryHistoryNavigation();
+        this.renderMemoryHistoryCalendar();
+    }
+    
+    // 返回当前月
+    backToCurrentMemoryMonth() {
+        this.currentMemoryHistoryDate = new Date();
+        this.updateMemoryHistoryNavigation();
+        this.renderMemoryHistoryCalendar();
+    }
+    
+    // 渲染历史记录日历
+    renderMemoryHistoryCalendar() {
+        var calendar = document.getElementById('memory-history-calendar');
+        var year = this.currentMemoryHistoryDate.getFullYear();
+        var month = this.currentMemoryHistoryDate.getMonth();
+        
+        // 清空日历
+        calendar.innerHTML = '';
+        
+        // 添加周几标题
+        var weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        weekdays.forEach(day => {
+            var dayHeader = document.createElement('div');
+            dayHeader.className = 'memory-calendar-weekday';
+            dayHeader.textContent = day;
+            calendar.appendChild(dayHeader);
+        });
+        
+        // 获取月份的第一天和最后一天
+        var firstDay = new Date(year, month, 1);
+        var lastDay = new Date(year, month + 1, 0);
+        
+        // 获取第一周的开始日期（周日开始）
+        var startDate = new Date(firstDay);
+        startDate.setDate(firstDay.getDate() - firstDay.getDay());
+        
+        // 渲染42个日期格子（6周）
+        for (var i = 0; i < 42; i++) {
+            var date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
+            
+            var dayElement = this.createMemoryHistoryDayElement(date, month);
+            calendar.appendChild(dayElement);
+        }
+    }
+    
+    // 创建历史记录日期元素
+    createMemoryHistoryDayElement(date, currentMonth) {
+        var dayElement = document.createElement('div');
+        dayElement.className = 'memory-calendar-day';
+        
+        // 判断是否为当前月
+        if (date.getMonth() !== currentMonth) {
+            dayElement.classList.add('other-month');
+        }
+        
+        // 判断是否为今天
+        if (this.isToday(date)) {
+            dayElement.classList.add('today');
+        }
+        
+        // 日期数字
+        var dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = date.getDate();
+        dayElement.appendChild(dayNumber);
+        
+        // 查找该日期的背诵记录
+        var memoryRecords = this.getMemoryRecordsForDate(date, this.selectedMemoryMemberId);
+        
+        if (memoryRecords.length > 0) {
+            var recordsContainer = document.createElement('div');
+            recordsContainer.className = 'memory-records';
+            
+            memoryRecords.forEach(record => {
+                var recordElement = document.createElement('div');
+                recordElement.className = 'memory-record priority-' + record.priority;
+                recordElement.textContent = record.title;
+                recordElement.title = record.content.substring(0, 50) + (record.content.length > 50 ? '...' : '');
+                recordsContainer.appendChild(recordElement);
+            });
+            
+            dayElement.appendChild(recordsContainer);
+        }
+        
+        return dayElement;
+    }
+    
+    // 获取指定日期的背诵记录
+    getMemoryRecordsForDate(date, memberId) {
+        var dateStr = date.toDateString();
+        return this.memoryCards.filter(card => {
+            if (card.assignee !== memberId) return false;
+            var startDate = new Date(card.startDate).toDateString();
+            return startDate === dateStr;
+        }).sort((a, b) => {
+            var priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+            return priorityOrder[b.priority] - priorityOrder[a.priority];
         });
     }
 }
