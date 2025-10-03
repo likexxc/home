@@ -4,6 +4,8 @@ class FamilyTaskSystem {
         this.members = [];
         this.familyTasks = [];
         this.memoryCards = []; // 新增：背诵卡片数据
+        this.houseworkReminders = []; // 新增：家务提醒数据
+        this.completedHousework = []; // 新增：已完成的家务记录
         this.currentPage = 0;
         this.membersPerPage = 3;
         this.currentEditingMember = null;
@@ -11,7 +13,12 @@ class FamilyTaskSystem {
         this.currentEditingMemory = null; // 新增：当前编辑的背诵内容
         this.selectedMemberId = null;
         this.selectedMemoryMemberId = null; // 新增：选中的背诵成员ID
+        this.selectedHouseworkMemberId = null; // 新增：选中的家务成员ID
         this.currentMemoryHistoryDate = new Date(); // 新增：历史记录当前查看的月份
+        this.currentEditingHousework = null; // 新增：当前编辑的家务提醒
+        this.currentDelayingHousework = null; // 新增：当前推迟的家务
+        this.currentReassigningHousework = null; // 新增：当前更换负责人的家务
+        this.selectedReassignMemberId = null; // 新增：选中的新负责人
         this.currentCalendarDate = new Date();
         this.calendarView = 'week';
         this.selectedDate = null;
@@ -159,11 +166,13 @@ class FamilyTaskSystem {
                 this.members = data.familyMembers || [];
                 this.familyTasks = data.familyTasks || [];
                 this.memoryCards = data.memoryCards || [];
+                this.houseworkReminders = data.houseworkReminders || [];
+                this.completedHousework = data.completedHousework || [];
                 this.lastSyncTime = data.lastUpdated;
                 
                 // 只有在服务器上确实没有任何数据时才初始化默认数据
                 // 避免覆盖用户已有的数据
-                if (this.members.length === 0 && this.familyTasks.length === 0 && this.memoryCards.length === 0 && !data.lastUpdated) {
+                if (this.members.length === 0 && this.familyTasks.length === 0 && this.memoryCards.length === 0 && this.houseworkReminders.length === 0 && !data.lastUpdated) {
                     console.log('服务器无数据，初始化默认数据');
                     this.initializeDefaultData();
                     await this.saveDataToServer();
@@ -185,9 +194,11 @@ class FamilyTaskSystem {
         this.members = JSON.parse(localStorage.getItem('familyMembers')) || [];
         this.familyTasks = JSON.parse(localStorage.getItem('familyTasks')) || [];
         this.memoryCards = JSON.parse(localStorage.getItem('memoryCards')) || [];
+        this.houseworkReminders = JSON.parse(localStorage.getItem('houseworkReminders')) || [];
+        this.completedHousework = JSON.parse(localStorage.getItem('completedHousework')) || [];
         
         // 只有在本地确实没有任何数据时才初始化默认数据
-        if (this.members.length === 0 && this.familyTasks.length === 0 && this.memoryCards.length === 0) {
+        if (this.members.length === 0 && this.familyTasks.length === 0 && this.memoryCards.length === 0 && this.houseworkReminders.length === 0) {
             console.log('本地无数据，初始化默认数据');
             this.initializeDefaultData();
             this.saveDataToLocal();
@@ -210,6 +221,8 @@ class FamilyTaskSystem {
             { id: 'task003', title: '整理房间', assignee: 'mem004', assigneeName: '小红', priority: 'low', status: 'completed', createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), completedAt: new Date().toISOString() }
         ];
         this.memoryCards = [];
+        this.houseworkReminders = [];
+        this.completedHousework = [];
     }
 
     // 同步数据从服务器（定时检查更新）
@@ -224,10 +237,11 @@ class FamilyTaskSystem {
                 // 检查数据是否有更新
                 if (data.lastUpdated && data.lastUpdated !== this.lastSyncTime) {
                     // 只有在服务器有真实数据时才同步
-                    if (data.familyMembers || data.familyTasks || data.memoryCards) {
+                    if (data.familyMembers || data.familyTasks || data.memoryCards || data.houseworkReminders) {
                         this.members = data.familyMembers || [];
                         this.familyTasks = data.familyTasks || [];
                         this.memoryCards = data.memoryCards || [];
+                        this.houseworkReminders = data.houseworkReminders || [];
                         this.lastSyncTime = data.lastUpdated;
                         
                         // 刷新界面
@@ -274,7 +288,9 @@ class FamilyTaskSystem {
             const data = {
                 familyMembers: this.members,
                 familyTasks: this.familyTasks,
-                memoryCards: this.memoryCards
+                memoryCards: this.memoryCards,
+                houseworkReminders: this.houseworkReminders,
+                completedHousework: this.completedHousework
             };
             
             const response = await fetch('/api/data', {
@@ -303,6 +319,8 @@ class FamilyTaskSystem {
         localStorage.setItem('familyMembers', JSON.stringify(this.members));
         localStorage.setItem('familyTasks', JSON.stringify(this.familyTasks));
         localStorage.setItem('memoryCards', JSON.stringify(this.memoryCards));
+        localStorage.setItem('houseworkReminders', JSON.stringify(this.houseworkReminders));
+        localStorage.setItem('completedHousework', JSON.stringify(this.completedHousework));
     }
 
     setupEventListeners() {
@@ -312,19 +330,33 @@ class FamilyTaskSystem {
         document.getElementById('family-task-form').addEventListener('submit', (e) => this.handleFamilyTaskSubmit(e));
         document.getElementById('calendar-btn').addEventListener('click', () => this.showCalendarPage());
         document.getElementById('memory-btn').addEventListener('click', () => this.showMemoryPage());
+        document.getElementById('housework-btn').addEventListener('click', () => this.showHouseworkPage());
         document.getElementById('stats-btn').addEventListener('click', () => this.showStatsPage());
         document.getElementById('back-to-main').addEventListener('click', () => this.showMainPage());
         document.getElementById('back-to-main-from-stats').addEventListener('click', () => this.showMainPage());
         document.getElementById('back-to-main-from-memory').addEventListener('click', () => this.showMainPage());
+        document.getElementById('back-to-main-from-housework').addEventListener('click', () => this.showMainPage());
         document.getElementById('calendar-member-select').addEventListener('change', (e) => this.onMemberChange(e));
         document.getElementById('stats-member-select').addEventListener('change', (e) => this.onStatsMemberChange(e));
         document.getElementById('add-memory-btn').addEventListener('click', () => this.showMemoryModal());
+        document.getElementById('add-housework-btn').addEventListener('click', () => this.showHouseworkModal());
         document.getElementById('memory-history-btn').addEventListener('click', () => this.showMemoryHistoryModal());
         document.getElementById('memory-form').addEventListener('submit', (e) => this.handleMemorySubmit(e));
+        document.getElementById('housework-form').addEventListener('submit', (e) => this.handleHouseworkSubmit(e));
         document.getElementById('toggle-completed').addEventListener('click', () => this.toggleCompletedMemories());
         document.getElementById('prev-memory-month').addEventListener('click', () => this.changeMemoryHistoryMonth(-1));
         document.getElementById('next-memory-month').addEventListener('click', () => this.changeMemoryHistoryMonth(1));
         document.getElementById('current-memory-month').addEventListener('click', () => this.backToCurrentMemoryMonth());
+        document.getElementById('housework-frequency').addEventListener('change', (e) => this.onHouseworkFrequencyChange(e));
+        document.getElementById('confirm-delay').addEventListener('click', () => this.confirmHouseworkDelay());
+        document.getElementById('confirm-reassign').addEventListener('click', () => this.confirmHouseworkReassign());
+        
+        // 添加重复模式事件监听
+        document.addEventListener('change', (e) => {
+            if (e.target.name === 'repeatMode') {
+                this.onRepeatModeChange(e.target.value);
+            }
+        });
         document.querySelectorAll('input[name="calendarView"]').forEach(radio => {
             radio.addEventListener('change', (e) => this.onViewChange(e));
         });
@@ -349,6 +381,13 @@ class FamilyTaskSystem {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) this.closeModal(modal.id);
             });
+        });
+        
+        // 添加推迟选项事件监听
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delay-option')) {
+                this.selectDelayOption(e.target.dataset.delay);
+            }
         });
     }
 
@@ -375,6 +414,7 @@ class FamilyTaskSystem {
         document.getElementById('calendar-page').classList.remove('active');
         document.getElementById('stats-page').classList.remove('active');
         document.getElementById('memory-page').classList.remove('active');
+        document.getElementById('housework-page').classList.remove('active');
         document.getElementById('family-page').classList.add('active');
         this.updateDateTime();
         this.loadFamilyData();
@@ -799,10 +839,22 @@ class FamilyTaskSystem {
         // 获取该成员的今日任务（使用与日历相同的日期筛选逻辑）
         var todayTasks = this.getTasksForDate(today, member.id);
         
+        // 获取今日的家务提醒
+        var todayHousework = this.getTodayHouseworkReminders(member.id);
+        
         // 按状态分类今日任务
         var todoTasks = todayTasks.filter(task => task.status === 'todo').sort(this.sortTasksByPriority);
         var completedTasks = todayTasks.filter(task => task.status === 'completed');
         var abandonedTasks = todayTasks.filter(task => task.status === 'abandoned');
+        
+        // 获取今日完成的家务
+        var todayCompletedHousework = this.getTodayCompletedHousework(member.id);
+        
+        // 获取今日已延期的家务
+        var todayPostponedHousework = this.getTodayPostponedHousework(member.id);
+        
+        // 将今日的家务提醒添加到今日待办中（不包括延期的家务）
+        var allTodoItems = [...todoTasks, ...todayHousework];
         
         var card = document.createElement('div');
         card.className = 'member-card';
@@ -812,44 +864,109 @@ class FamilyTaskSystem {
             '<button class="btn btn-cool btn-small" onclick="familyTaskSystem.showMemberModal(' + JSON.stringify(member).replace(/"/g, '&quot;') + ')"><i class="fas fa-edit"></i></button>' +
             '<button class="btn btn-danger btn-small" onclick="familyTaskSystem.deleteMember(\'' + member.id + '\')">' +
             '<i class="fas fa-trash"></i></button></div></div>' +
-            '<div class="task-group"><div class="task-group-title todo">今日待办 (' + todoTasks.length + ')</div>' +
-            '<div class="task-list">' + this.renderTaskList(todoTasks, 'todo') + '</div></div>';
+            '<div class="task-group"><div class="task-group-title todo">今日待办 (' + allTodoItems.length + ')</div>' +
+            '<div class="task-list">' + this.renderTaskList(allTodoItems, 'todo') + '</div></div>';
         
-        // 只有在有已完成任务时才显示已完成组
-        if (completedTasks.length > 0) {
-            cardHTML += '<div class="task-group"><div class="task-group-title completed">今日已完成 (' + completedTasks.length + ')</div>' +
-                '<div class="task-list">' + this.renderTaskList(completedTasks, 'completed') + '</div></div>';
+        // 只有在有已完成任务或今日完成的家务时才显示已完成组
+        if (completedTasks.length > 0 || todayCompletedHousework.length > 0) {
+            var allCompletedItems = [...completedTasks, ...todayCompletedHousework];
+            cardHTML += '<div class="task-group"><div class="task-group-title completed">今日已完成 (' + allCompletedItems.length + ')</div>' +
+                '<div class="task-list">' + this.renderTaskList(allCompletedItems, 'completed') + '</div></div>';
         }
         
         // 只有在有已放弃任务时才显示已放弃组
         if (abandonedTasks.length > 0) {
-            cardHTML += '<div class="task-group"><div class="task-group-title abandoned">今日已放弃 (' + abandonedTasks.length + ')</div>' +
-                '<div class="task-list">' + this.renderTaskList(abandonedTasks, 'abandoned') + '</div></div>';
+            var allAbandonedItems = [...abandonedTasks];
+            cardHTML += '<div class="task-group"><div class="task-group-title abandoned">今日已放弃 (' + allAbandonedItems.length + ')</div>' +
+                '<div class="task-list">' + this.renderTaskList(allAbandonedItems, 'abandoned') + '</div></div>';
+        }
+        
+        // 只有在有今日延期的家务时才显示家务延期组
+        if (todayPostponedHousework.length > 0) {
+            cardHTML += '<div class="task-group"><div class="task-group-title postponed">家务延期 (' + todayPostponedHousework.length + ')</div>' +
+                '<div class="task-list">' + this.renderTaskList(todayPostponedHousework, 'postponed') + '</div></div>';
         }
         
         card.innerHTML = cardHTML;
         return card;
     }
 
-    renderTaskList(tasks, status) {
-        if (tasks.length === 0) {
+    renderTaskList(items, status) {
+        if (items.length === 0) {
             return '<div style="text-align: center; color: #999; padding: 1rem; font-size: 0.9rem;">暂无任务</div>';
         }
-        return tasks.map(task => {
+        return items.map(item => {
+            // 判断是任务还是家务提醒
+            var isHousework = item.frequency !== undefined;
+            // 判断是否是完成的家务记录
+            var isCompletedHousework = item.houseworkId !== undefined;
+            // 判断是否是已延期的家务
+            var isPostponedHousework = item.isPostponed !== undefined;
             var priorityEmoji = { 'high': '🔴', 'medium': '🟡', 'low': '🟢' };
             var actions = '';
-            if (status === 'todo') {
+            
+            if (isPostponedHousework) {
+                // 今日已延期的家务
                 actions = '<div class="task-actions">' +
-                    '<button class="btn-mini btn-cool" onclick="familyTaskSystem.updateTaskStatus(\'' + task.id + '\', \'completed\')" title="完成">✓</button>' +
-                    '<button class="btn-mini btn-danger" onclick="familyTaskSystem.updateTaskStatus(\'' + task.id + '\', \'abandoned\')" title="放弃">✕</button>' +
-                    '<button class="btn-mini btn-secondary" onclick="familyTaskSystem.showFamilyTaskModal(' + JSON.stringify(task).replace(/"/g, '&quot;') + ')" title="编辑"><i class="fas fa-edit"></i></button></div>';
+                    '<button class="btn-mini btn-cool" onclick="familyTaskSystem.cancelPostponedHousework(\'' + item.id + '\')" title="取消延期">↩️</button>' +
+                    '<span class="postponed-badge">已延期</span>' +
+                '</div>';
+                return '<div class="task-item postponed-housework-item">' +
+                    '<div class="task-content">' +
+                        '<div class="task-title">' + item.title +
+                            '<span class="task-priority-badge housework">🏠</span>' +
+                        '</div>' + actions +
+                    '</div>' +
+                '</div>';
+            } else if (isCompletedHousework) {
+                // 今日完成的家务记录
+                actions = '<div class="task-actions">' +
+                    '<button class="btn-mini btn-outline" onclick="familyTaskSystem.undoHousework(\'' + item.id + '\')" title="退回待办">↩️</button>' +
+                    '<span class="completed-badge">已完成</span>' +
+                '</div>';
+                return '<div class="task-item completed-housework-item">' +
+                    '<div class="task-content">' +
+                        '<div class="task-title">' + item.title +
+                            '<span class="task-priority-badge housework">🏠</span>' +
+                        '</div>' + actions +
+                    '</div>' +
+                '</div>';
+            } else if (isHousework) {
+                // 家务提醒的操作按钮
+                actions = '<div class="task-actions">' +
+                    '<button class="btn-mini btn-cool" onclick="familyTaskSystem.completeHousework(\'' + item.id + '\')" title="完成">✓</button>' +
+                    '<button class="btn-mini btn-secondary" onclick="familyTaskSystem.showHouseworkDelayModal(\'' + item.id + '\')" title="推迟">📅</button>' +
+                    '<button class="btn-mini btn-outline" onclick="familyTaskSystem.showHouseworkReassignModal(\'' + item.id + '\')" title="更换负责人">🔄</button>' +
+                '</div>';
+                return '<div class="task-item housework-reminder">' +
+                    '<div class="task-content">' +
+                        '<div class="task-title">' + item.title +
+                            '<span class="task-priority-badge housework">🏠</span>' +
+                        '</div>' + actions +
+                    '</div>' +
+                '</div>';
             } else {
-                actions = '<div class="task-actions">' +
-                    '<button class="btn-mini btn-cool" onclick="familyTaskSystem.updateTaskStatus(\'' + task.id + '\', \'todo\')" title="重新激活">↻</button>' +
-                    '<button class="btn-mini btn-danger" onclick="familyTaskSystem.deleteTask(\'' + task.id + '\')" title="删除"><i class="fas fa-trash"></i></button></div>';
+                // 普通任务的操作按钮
+                if (status === 'todo') {
+                    actions = '<div class="task-actions">' +
+                        '<button class="btn-mini btn-cool" onclick="familyTaskSystem.updateTaskStatus(\'' + item.id + '\', \'completed\')" title="完成">✓</button>' +
+                        '<button class="btn-mini btn-danger" onclick="familyTaskSystem.updateTaskStatus(\'' + item.id + '\', \'abandoned\')" title="放弃">✕</button>' +
+                        '<button class="btn-mini btn-secondary" onclick="familyTaskSystem.showFamilyTaskModal(' + JSON.stringify(item).replace(/"/g, '&quot;') + ')" title="编辑"><i class="fas fa-edit"></i></button>' +
+                    '</div>';
+                } else {
+                    actions = '<div class="task-actions">' +
+                        '<button class="btn-mini btn-cool" onclick="familyTaskSystem.updateTaskStatus(\'' + item.id + '\', \'todo\')" title="重新激活">↻</button>' +
+                        '<button class="btn-mini btn-danger" onclick="familyTaskSystem.deleteTask(\'' + item.id + '\')" title="删除"><i class="fas fa-trash"></i></button>' +
+                    '</div>';
+                }
+                return '<div class="task-item priority-' + item.priority + ' ' + status + '">' +
+                    '<div class="task-content">' +
+                        '<div class="task-title">' + item.title +
+                            '<span class="task-priority-badge priority-' + item.priority + '">' + priorityEmoji[item.priority] + '</span>' +
+                        '</div>' + actions +
+                    '</div>' +
+                '</div>';
             }
-            return '<div class="task-item priority-' + task.priority + ' ' + status + '"><div class="task-content"><div class="task-title">' + task.title +
-                '<span class="task-priority-badge priority-' + task.priority + '">' + priorityEmoji[task.priority] + '</span></div>' + actions + '</div></div>';
         }).join('');
     }
 
@@ -889,6 +1006,9 @@ class FamilyTaskSystem {
         this.currentEditingMember = null;
         this.currentEditingTask = null;
         this.currentEditingMemory = null;
+        this.currentDelayingHousework = null;
+        this.currentReassigningHousework = null;
+        this.selectedReassignMemberId = null;
     }
 
     showNotification(message, type) {
@@ -985,6 +1105,10 @@ class FamilyTaskSystem {
         var periodTasks = this.getTasksForStatsPeriod();
         var memberTasks = periodTasks.filter(task => task.assignee === this.selectedStatsMemberId && task.status === 'completed');
         
+        // 获取该成员在统计期间完成的家务
+        var periodHousework = this.getHouseworkForStatsPeriod();
+        var memberHousework = periodHousework.filter(hw => hw.assignee === this.selectedStatsMemberId);
+        
         // 统计任务完成次数
         var taskCounts = {};
         memberTasks.forEach(task => {
@@ -999,13 +1123,31 @@ class FamilyTaskSystem {
             }
         });
         
+        // 统计家务完成次数
+        var houseworkCounts = {};
+        memberHousework.forEach(record => {
+            if (houseworkCounts[record.title]) {
+                houseworkCounts[record.title].count++;
+            } else {
+                houseworkCounts[record.title] = {
+                    title: record.title,
+                    count: 1
+                };
+            }
+        });
+        
+        // 合并所有完成的项目
+        var allCompletedItems = [...memberTasks, ...memberHousework];
+        
         // 按完成次数从高到低排序
         var sortedTasks = Object.values(taskCounts).sort((a, b) => b.count - a.count);
+        var sortedHousework = Object.values(houseworkCounts).sort((a, b) => b.count - a.count);
         
         // 更新统计概要
         var periodName = this.statsView === 'week' ? '本周' : '本月';
-        var totalCompleted = memberTasks.length;
+        var totalCompleted = allCompletedItems.length;
         var uniqueTasks = sortedTasks.length;
+        var uniqueHousework = sortedHousework.length;
         
         summary.innerHTML = 
             '<h3>' + memberName + ' 的' + periodName + '任务统计</h3>' +
@@ -1018,20 +1160,41 @@ class FamilyTaskSystem {
                     '<div style="font-size: 2rem; font-weight: bold; color: #29b6f6;">' + uniqueTasks + '</div>' +
                     '<div style="color: #666;">不同任务</div>' +
                 '</div>' +
+                '<div style="text-align: center;">' +
+                    '<div style="font-size: 2rem; font-weight: bold; color: #9c27b0;">' + uniqueHousework + '</div>' +
+                    '<div style="color: #666;">不同家务</div>' +
+                '</div>' +
             '</div>';
         
         // 更新任务列表
-        if (sortedTasks.length === 0) {
+        if (sortedTasks.length === 0 && sortedHousework.length === 0) {
             taskList.innerHTML = '<div class="stats-empty"><i class="fas fa-clipboard-check"></i>' + periodName + '暂无已完成任务</div>';
         } else {
             var html = '<h4 style="margin-bottom: 1rem; color: #0277bd;">任务完成排行榜</h4>';
-            sortedTasks.forEach(task => {
-                html += 
-                    '<div class="stats-task-item">' +
-                        '<div class="stats-task-title">' + task.title + '</div>' +
-                        '<div class="stats-task-count">' + task.count + '次</div>' +
-                    '</div>';
-            });
+            
+            // 显示普通任务统计
+            if (sortedTasks.length > 0) {
+                sortedTasks.forEach(task => {
+                    html += 
+                        '<div class="stats-task-item">' +
+                            '<div class="stats-task-title">' + task.title + '</div>' +
+                            '<div class="stats-task-count">' + task.count + '次</div>' +
+                        '</div>';
+                });
+            }
+            
+            // 显示家务统计
+            if (sortedHousework.length > 0) {
+                html += '<h4 style="margin: 1rem 0; color: #673ab7;">家务完成排行榜</h4>';
+                sortedHousework.forEach(hw => {
+                    html += 
+                        '<div class="stats-task-item housework-stats-item">' +
+                            '<div class="stats-task-title">' + hw.title + '</div>' +
+                            '<div class="stats-task-count">' + hw.count + '次</div>' +
+                        '</div>';
+                });
+            }
+            
             taskList.innerHTML = html;
         }
     }
@@ -1053,6 +1216,27 @@ class FamilyTaskSystem {
         return this.familyTasks.filter(task => {
             if (!task.completedAt) return false;
             var completedDate = new Date(task.completedAt);
+            return completedDate >= periodStart && completedDate <= periodEnd;
+        });
+    }
+    
+    // 获取统计期间的家务完成记录
+    getHouseworkForStatsPeriod() {
+        var periodStart, periodEnd;
+        
+        if (this.statsView === 'week') {
+            periodStart = this.getWeekStart(this.currentStatsDate);
+            periodEnd = new Date(periodStart);
+            periodEnd.setDate(periodEnd.getDate() + 6);
+            periodEnd.setHours(23, 59, 59, 999);
+        } else {
+            periodStart = new Date(this.currentStatsDate.getFullYear(), this.currentStatsDate.getMonth(), 1);
+            periodEnd = new Date(this.currentStatsDate.getFullYear(), this.currentStatsDate.getMonth() + 1, 0);
+            periodEnd.setHours(23, 59, 59, 999);
+        }
+        
+        return this.completedHousework.filter(record => {
+            var completedDate = new Date(record.completedDate);
             return completedDate >= periodStart && completedDate <= periodEnd;
         });
     }
@@ -1147,23 +1331,34 @@ class FamilyTaskSystem {
     
     // 获取今日需要背诵的卡片
     getTodayMemoryCards(memberId, today) {
-        var memoryIntervals = [1, 2, 3, 5, 8, 16, 31, 61, 91, 181]; // 修改为第1天开始
+        var memoryIntervals = [1, 2, 3, 5, 8, 16, 31, 61, 91, 181]; // 艾宾浩斯遗忘曲线间隔天数
         
         return this.memoryCards.filter(card => {
             if (card.assignee !== memberId || card.isCompleted) return false;
             
-            var startDate = new Date(card.startDate);
-            startDate.setHours(0, 0, 0, 0);
+            var baseDate;
             var todayDate = new Date(today);
             todayDate.setHours(0, 0, 0, 0);
             
-            var daysDiff = Math.floor((todayDate - startDate) / (1000 * 60 * 60 * 24)) + 1; // +1 让开始日期为第1天
+            // 如果卡片曾经被完成过，则从最后一次完成日期开始计算
+            if (card.completedAt) {
+                baseDate = new Date(card.completedAt);
+            } else {
+                // 否则从开始日期开始计算
+                baseDate = new Date(card.startDate);
+            }
+            
+            baseDate.setHours(0, 0, 0, 0);
+            
+            var daysDiff = Math.floor((todayDate - baseDate) / (1000 * 60 * 60 * 24)) + 1; // +1 让开始日期为第1天
             return memoryIntervals.includes(daysDiff);
         }).sort((a, b) => {
             var priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
             return priorityOrder[b.priority] - priorityOrder[a.priority];
         });
     }
+    
+
     
     // 获取已背诵的卡片
     getCompletedMemoryCards(memberId) {
@@ -1306,6 +1501,52 @@ class FamilyTaskSystem {
         }
     }
     
+    // 测试背诵模块的艾宾浩斯遗忘曲线功能
+    testMemorySchedule() {
+        console.log("=== 背诵模块艾宾浩斯遗忘曲线测试 ===");
+        
+        // 创建测试卡片
+        var testCard = {
+            id: "test-card-001",
+            title: "测试背诵内容",
+            content: "这是用于测试艾宾浩斯遗忘曲线的背诵内容",
+            startDate: new Date().toISOString(),
+            priority: "medium",
+            assignee: "test-member-001",
+            assigneeName: "测试用户",
+            isCompleted: false,
+            createdAt: new Date().toISOString()
+        };
+        
+        // 添加测试卡片到内存中
+        this.memoryCards.push(testCard);
+        
+        console.log("1. 初始状态测试：");
+        console.log("   卡片开始日期:", new Date(testCard.startDate).toDateString());
+        console.log("   今天应该显示:", this.getTodayMemoryCards("test-member-001", new Date()).length > 0);
+        
+        // 模拟第一天完成背诵
+        testCard.isCompleted = true;
+        testCard.completedAt = new Date().toISOString();
+        console.log("2. 第一天完成背诵后：");
+        console.log("   完成时间:", new Date(testCard.completedAt).toDateString());
+        
+        // 测试第二天是否显示
+        var tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        console.log("   第二天应该显示:", this.getTodayMemoryCards("test-member-001", tomorrow).length > 0);
+        
+        // 测试第三天是否显示
+        var dayAfterTomorrow = new Date();
+        dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+        console.log("   第三天应该显示:", this.getTodayMemoryCards("test-member-001", dayAfterTomorrow).length > 0);
+        
+        // 从内存中移除测试卡片
+        this.memoryCards = this.memoryCards.filter(card => card.id !== "test-card-001");
+        
+        console.log("=== 测试完成 ===");
+    }
+    
     // 切换已背诵列表显示
     toggleCompletedMemories() {
         var completedList = document.getElementById('memory-completed-list');
@@ -1429,8 +1670,28 @@ class FamilyTaskSystem {
             memoryRecords.forEach(record => {
                 var recordElement = document.createElement('div');
                 recordElement.className = 'memory-record priority-' + record.priority;
-                recordElement.textContent = record.title;
-                recordElement.title = record.content.substring(0, 50) + (record.content.length > 50 ? '...' : '');
+                
+                var titleElement = document.createElement('span');
+                titleElement.className = 'memory-record-title';
+                titleElement.textContent = record.title;
+                titleElement.title = record.content.substring(0, 50) + (record.content.length > 50 ? '...' : '');
+                
+                var deleteBtn = document.createElement('button');
+                deleteBtn.className = 'memory-record-delete';
+                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                deleteBtn.title = '删除背诵内容';
+                
+                // 使用闭包保存record.id和this上下文
+                var self = this;
+                var recordId = record.id;
+                deleteBtn.onclick = function(e) {
+                    console.log('删除按钮被点击:', recordId);
+                    e.stopPropagation();
+                    self.deleteMemoryCardFromHistory(recordId);
+                };
+                
+                recordElement.appendChild(titleElement);
+                recordElement.appendChild(deleteBtn);
                 recordsContainer.appendChild(recordElement);
             });
             
@@ -1451,6 +1712,667 @@ class FamilyTaskSystem {
             var priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
             return priorityOrder[b.priority] - priorityOrder[a.priority];
         });
+    }
+    
+    // 从历史记录中删除背诵卡片
+    deleteMemoryCardFromHistory(cardId) {
+        console.log('尝试删除背诵卡片:', cardId);
+        var card = this.memoryCards.find(c => c.id === cardId);
+        if (!card) {
+            console.error('未找到指定的背诵卡片:', cardId);
+            return;
+        }
+        
+        if (confirm('确定要删除背诵内容「' + card.title + '」吗？')) {
+            console.log('用户确认删除，执行删除操作');
+            this.memoryCards = this.memoryCards.filter(c => c.id !== cardId);
+            this.saveData();
+            this.renderMemoryHistoryCalendar();
+            // 如果当前在背诵页面，也要更新显示
+            if (document.getElementById('memory-page').classList.contains('active')) {
+                this.renderMemoryCards();
+            }
+            this.showNotification('背诵内容删除成功', 'success');
+        } else {
+            console.log('用户取消删除操作');
+        }
+    }
+    
+    // ====== 家务功能 ======
+    
+    // 显示家务设置页面
+    showHouseworkPage() {
+        document.getElementById('family-page').classList.remove('active');
+        document.getElementById('calendar-page').classList.remove('active');
+        document.getElementById('stats-page').classList.remove('active');
+        document.getElementById('memory-page').classList.remove('active');
+        document.getElementById('housework-page').classList.add('active');
+        this.updateHouseworkMemberOptions();
+        this.selectedHouseworkMemberId = null;
+        document.getElementById('add-housework-btn').disabled = true;
+        this.renderHouseworkList();
+    }
+    
+    // 更新家务页面成员按钮
+    updateHouseworkMemberOptions() {
+        var container = document.getElementById('housework-member-buttons');
+        container.innerHTML = '';
+        
+        if (this.members.length === 0) {
+            container.innerHTML = '<div class="no-members">暂无成员</div>';
+            return;
+        }
+        
+        this.members.forEach(member => {
+            var button = document.createElement('button');
+            button.className = 'btn btn-outline member-btn';
+            button.textContent = member.name;
+            button.onclick = () => this.selectHouseworkMember(member.id);
+            container.appendChild(button);
+        });
+    }
+    
+    // 选择家务成员
+    selectHouseworkMember(memberId) {
+        this.selectedHouseworkMemberId = memberId;
+        
+        // 更新按钮状态
+        document.querySelectorAll('#housework-member-buttons .member-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        var selectedBtn = Array.from(document.querySelectorAll('#housework-member-buttons .member-btn')).find(btn => {
+            return btn.textContent === this.getMemberName(memberId);
+        });
+        if (selectedBtn) {
+            selectedBtn.classList.add('active');
+        }
+        
+        document.getElementById('add-housework-btn').disabled = false;
+        this.renderHouseworkList();
+    }
+    
+    // 渲染家务列表
+    renderHouseworkList() {
+        var houseworkList = document.getElementById('housework-list');
+        
+        if (!this.selectedHouseworkMemberId) {
+            houseworkList.innerHTML = '<div class="no-member-selected"><i class="fas fa-broom"></i><p>请选择成员查看家务提醒</p></div>';
+            return;
+        }
+        
+        var memberName = this.getMemberName(this.selectedHouseworkMemberId);
+        var memberHousework = this.houseworkReminders.filter(hw => hw.assignee === this.selectedHouseworkMemberId);
+        
+        if (memberHousework.length === 0) {
+            houseworkList.innerHTML = '<div class="housework-empty"><i class="fas fa-broom"></i><p>' + memberName + ' 暂无家务提醒</p></div>';
+        } else {
+            houseworkList.innerHTML = memberHousework.map(hw => this.createHouseworkElement(hw)).join('');
+        }
+    }
+    
+    // 创建家务元素
+    createHouseworkElement(housework) {
+        var frequencyText = this.getFrequencyText(housework.frequency, housework.customDays);
+        var nextReminderDate = this.getNextHouseworkDate(housework);
+        var isToday = nextReminderDate && this.isToday(new Date(nextReminderDate));
+        
+        // 如果家务已延期，显示延期信息
+        var nextReminderText = '';
+        if (housework.isPostponed && housework.postponedDate) {
+            var postponedDate = new Date(housework.postponedDate);
+            nextReminderText = '已延期至：' + postponedDate.toLocaleDateString();
+        } else {
+            nextReminderText = '下次提醒：' + (nextReminderDate ? new Date(nextReminderDate).toLocaleDateString() : '无');
+        }
+        
+        return '<div class="housework-card' + (isToday ? ' today-reminder' : '') + '">' +
+                '<div class="housework-header">' +
+                    '<div class="housework-title">' + housework.title + '</div>' +
+                    '<div class="housework-actions">' +
+                        '<button class="btn btn-small btn-cool" onclick="familyTaskSystem.showHouseworkModal(\'' + housework.id + '\')" title="修改">' +
+                            '<i class="fas fa-edit"></i>' +
+                        '</button>' +
+                        '<button class="btn btn-small btn-danger" onclick="familyTaskSystem.deleteHousework(\'' + housework.id + '\')" title="删除">' +
+                            '<i class="fas fa-trash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+                (housework.description ? '<div class="housework-description">' + housework.description + '</div>' : '') +
+                '<div class="housework-footer">' +
+                    '<div class="housework-frequency">频率：' + frequencyText + '</div>' +
+                    '<div class="housework-next-date">' + nextReminderText + '</div>' +
+                '</div>' +
+            '</div>';
+    }
+    
+    // 获取频率文本
+    getFrequencyText(frequency, customDays) {
+        switch(frequency) {
+            case 'daily': return '每天';
+            case 'weekly': return '每周';
+            case 'monthly': return '每月';
+            case 'custom': return '每' + customDays + '天';
+            default: return '未知';
+        }
+    }
+    
+    // 获取下次家务提醒日期
+    getNextHouseworkDate(housework) {
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // 如果家务已延期，则优先使用延期日期
+        if (housework.isPostponed && housework.postponedDate) {
+            var postponedDate = new Date(housework.postponedDate);
+            postponedDate.setHours(0, 0, 0, 0);
+            // 如果延期日期在今天或之后，则返回延期日期
+            if (postponedDate >= today) {
+                return postponedDate.toISOString();
+            }
+            // 如果延期日期在今天之前，说明已经过了延期日期，应该按照正常规则计算
+        }
+        
+        // 根据重复模式选择计算基准日期
+        var baseDate;
+        if (housework.repeatMode === 'flexible' && housework.lastCompletedDate) {
+            // 非固定日期：从最后完成日期开始计算
+            baseDate = new Date(housework.lastCompletedDate);
+        } else {
+            // 固定日期：从开始日期开始计算
+            baseDate = new Date(housework.startDate);
+        }
+        
+        baseDate.setHours(0, 0, 0, 0);
+        
+        var interval;
+        switch(housework.frequency) {
+            case 'daily': interval = 1; break;
+            case 'weekly': interval = 7; break;
+            case 'monthly': interval = 30; break;
+            case 'custom': interval = housework.customDays || 7; break;
+            default: return null;
+        }
+        
+        // 计算从基准日期开始的下一个提醒日期
+        var daysDiff = Math.floor((today - baseDate) / (1000 * 60 * 60 * 24));
+        var cycles = Math.max(0, Math.floor(daysDiff / interval));
+        
+        // 计算下一个提醒日期
+        var nextDate = new Date(baseDate);
+        nextDate.setDate(baseDate.getDate() + (cycles + 1) * interval);
+        
+        // 如果计算出的日期是今天，计算下一个周期的日期
+        if (nextDate.toDateString() === today.toDateString()) {
+            nextDate.setDate(nextDate.getDate() + interval);
+        }
+        
+        return nextDate.toISOString();
+    }
+    
+    // 显示家务模态框
+    showHouseworkModal(houseworkId = null) {
+        this.currentEditingHousework = houseworkId ? this.houseworkReminders.find(hw => hw.id === houseworkId) : null;
+        var modal = document.getElementById('housework-modal');
+        var title = document.getElementById('housework-modal-title');
+        var form = document.getElementById('housework-form');
+        
+        if (this.currentEditingHousework) {
+            title.textContent = '编辑家务提醒';
+            document.getElementById('housework-title').value = this.currentEditingHousework.title;
+            document.getElementById('housework-description').value = this.currentEditingHousework.description || '';
+            document.getElementById('housework-frequency').value = this.currentEditingHousework.frequency;
+            document.getElementById('housework-start-date').value = this.currentEditingHousework.startDate.split('T')[0];
+            
+            // 设置重复模式
+            var repeatMode = this.currentEditingHousework.repeatMode || 'fixed';
+            document.querySelector('input[name="repeatMode"][value="' + repeatMode + '"]').checked = true;
+            this.onRepeatModeChange(repeatMode);
+            
+            if (this.currentEditingHousework.frequency === 'custom') {
+                document.getElementById('custom-frequency-group').style.display = 'block';
+                document.getElementById('custom-days').value = this.currentEditingHousework.customDays;
+            }
+        } else {
+            title.textContent = '添加家务提醒';
+            form.reset();
+            document.getElementById('housework-start-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('custom-frequency-group').style.display = 'none';
+            
+            // 默认选中固定日期模式
+            document.querySelector('input[name="repeatMode"][value="fixed"]').checked = true;
+            this.onRepeatModeChange('fixed');
+        }
+        
+        modal.classList.add('active');
+    }
+    
+    // 处理家务表单提交
+    handleHouseworkSubmit(e) {
+        e.preventDefault();
+        
+        if (!this.selectedHouseworkMemberId) {
+            this.showNotification('请先选择成员', 'warning');
+            return;
+        }
+        
+        var frequency = document.getElementById('housework-frequency').value;
+        var customDays = frequency === 'custom' ? parseInt(document.getElementById('custom-days').value) : null;
+        var repeatMode = document.querySelector('input[name="repeatMode"]:checked').value;
+        
+        var formData = {
+            id: this.currentEditingHousework ? this.currentEditingHousework.id : this.generateId(),
+            title: document.getElementById('housework-title').value,
+            description: document.getElementById('housework-description').value,
+            frequency: frequency,
+            customDays: customDays,
+            repeatMode: repeatMode, // 新增：重复模式
+            startDate: document.getElementById('housework-start-date').value + 'T00:00:00.000Z',
+            assignee: this.selectedHouseworkMemberId,
+            assigneeName: this.getMemberName(this.selectedHouseworkMemberId),
+            createdAt: this.currentEditingHousework ? this.currentEditingHousework.createdAt : new Date().toISOString(),
+            lastCompletedDate: this.currentEditingHousework ? this.currentEditingHousework.lastCompletedDate : null // 新增：最后完成日期
+        };
+        
+        if (this.currentEditingHousework) {
+            var index = this.houseworkReminders.findIndex(hw => hw.id === this.currentEditingHousework.id);
+            if (index !== -1) this.houseworkReminders[index] = formData;
+        } else {
+            this.houseworkReminders.push(formData);
+        }
+        
+        this.saveData();
+        this.renderHouseworkList();
+        this.loadFamilyData(); // 更新主页面显示
+        this.closeModal('housework-modal');
+        this.showNotification(this.currentEditingHousework ? '家务提醒更新成功' : '家务提醒添加成功', 'success');
+    }
+    
+    // 删除家务提醒
+    deleteHousework(houseworkId) {
+        var housework = this.houseworkReminders.find(hw => hw.id === houseworkId);
+        if (!housework) return;
+        
+        if (confirm('确定要删除家务提醒「' + housework.title + '」吗？')) {
+            this.houseworkReminders = this.houseworkReminders.filter(hw => hw.id !== houseworkId);
+            this.saveData();
+            this.renderHouseworkList();
+            this.loadFamilyData(); // 更新主页面显示
+            this.showNotification('家务提醒删除成功', 'success');
+        }
+    }
+    
+    // 家务频率变化事件
+    onHouseworkFrequencyChange(e) {
+        var customGroup = document.getElementById('custom-frequency-group');
+        if (e.target.value === 'custom') {
+            customGroup.style.display = 'block';
+        } else {
+            customGroup.style.display = 'none';
+        }
+    }
+    
+    // 重复模式变化事件
+    onRepeatModeChange(mode) {
+        var fixedDesc = document.querySelector('.fixed-desc');
+        var flexibleDesc = document.querySelector('.flexible-desc');
+        
+        if (mode === 'flexible') {
+            fixedDesc.style.display = 'none';
+            flexibleDesc.style.display = 'block';
+        } else {
+            fixedDesc.style.display = 'block';
+            flexibleDesc.style.display = 'none';
+        }
+    }
+    
+    // 获取今日的家务提醒
+    getTodayHouseworkReminders(memberId) {
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        return this.houseworkReminders.filter(hw => {
+            if (hw.assignee !== memberId) return false;
+            
+            // 检查是否已经完成（今天已完成的家务不应再显示在待办中）
+            var isCompletedToday = this.completedHousework.some(record => {
+                return record.houseworkId === hw.id && 
+                       new Date(record.completedDate).toDateString() === today.toDateString();
+            });
+            
+            if (isCompletedToday) return false;
+            
+            // 检查是否已延期（已延期的家务不应再显示在待办中，而应显示在延期组中）
+            if (hw.isPostponed) {
+                // 检查延期日期是否是今天
+                if (hw.postponedDate) {
+                    var postponedDate = new Date(hw.postponedDate);
+                    postponedDate.setHours(0, 0, 0, 0);
+                    // 如果延期日期是今天，则不应显示在今日待办中（而应显示在延期组中）
+                    if (postponedDate.toDateString() === today.toDateString()) {
+                        return false;
+                    }
+                }
+                // 如果延期日期不是今天，则不显示在今日待办中
+                return false;
+            }
+            
+            // 根据重复模式选择计算基准日期
+            var baseDate;
+            if (hw.repeatMode === 'flexible' && hw.lastCompletedDate) {
+                // 非固定日期：从最后完成日期开始计算
+                baseDate = new Date(hw.lastCompletedDate);
+            } else {
+                // 固定日期：从开始日期开始计算
+                baseDate = new Date(hw.startDate);
+            }
+            
+            baseDate.setHours(0, 0, 0, 0);
+            
+            var daysDiff = Math.floor((today - baseDate) / (1000 * 60 * 60 * 24));
+            
+            // 如果还没到开始日期，不显示
+            if (daysDiff < 0) return false;
+            
+            var interval;
+            switch(hw.frequency) {
+                case 'daily': interval = 1; break;
+                case 'weekly': interval = 7; break;
+                case 'monthly': interval = 30; break;
+                case 'custom': interval = hw.customDays || 7; break;
+                default: return false;
+            }
+            
+            // 检查今天是否应该提醒（从基准日期计算）
+            return (daysDiff % interval) === 0;
+        });
+    }
+    
+    // 完成家务
+    completeHousework(houseworkId) {
+        var housework = this.houseworkReminders.find(hw => hw.id === houseworkId);
+        if (!housework) return;
+        
+        var completedDate = new Date().toISOString();
+        
+        // 更新家务的最后完成日期
+        housework.lastCompletedDate = completedDate;
+        
+        // 创建完成记录
+        var completedRecord = {
+            id: this.generateId(),
+            houseworkId: housework.id,
+            title: housework.title,
+            description: housework.description,
+            assignee: housework.assignee,
+            assigneeName: housework.assigneeName,
+            completedDate: completedDate,
+            originalDueDate: new Date().toISOString()
+        };
+        
+        this.completedHousework.push(completedRecord);
+        this.saveData();
+        this.loadFamilyData();
+        this.showNotification('家务「' + housework.title + '」已完成', 'success');
+    }
+    
+    // 显示家务推迟模态框
+    showHouseworkDelayModal(houseworkId) {
+        var housework = this.houseworkReminders.find(hw => hw.id === houseworkId);
+        if (!housework) return;
+        
+        this.currentDelayingHousework = housework;
+        var modal = document.getElementById('housework-delay-modal');
+        var info = document.getElementById('housework-delay-info');
+        
+        info.textContent = '请选择对「' + housework.title + '」的推迟时间：';
+        
+        // 重置选项
+        document.querySelectorAll('.delay-option').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('custom-delay-group').style.display = 'none';
+        
+        modal.classList.add('active');
+    }
+    
+    // 选择推迟选项
+    selectDelayOption(delayType) {
+        document.querySelectorAll('.delay-option').forEach(btn => btn.classList.remove('active'));
+        document.querySelector('[data-delay="' + delayType + '"]').classList.add('active');
+        
+        var customGroup = document.getElementById('custom-delay-group');
+        if (delayType === 'custom') {
+            customGroup.style.display = 'block';
+        } else {
+            customGroup.style.display = 'none';
+        }
+    }
+    
+    // 确认推迟家务
+    confirmHouseworkDelay() {
+        if (!this.currentDelayingHousework) return;
+        
+        var activeOption = document.querySelector('.delay-option.active');
+        if (!activeOption) {
+            this.showNotification('请选择推迟选项', 'warning');
+            return;
+        }
+        
+        var delayType = activeOption.dataset.delay;
+        var delayDays = 0;
+        var today = new Date();
+        
+        switch(delayType) {
+            case 'weekend':
+                // 推迟到本周末（周六）
+                delayDays = 6 - today.getDay();
+                if (delayDays <= 0) delayDays = 6; // 如果今天是周末，推迟到下周六
+                break;
+            case 'next-weekend':
+                // 推迟到下个周末
+                delayDays = 6 - today.getDay() + 7;
+                break;
+            case 'custom':
+                delayDays = parseInt(document.getElementById('custom-delay-days').value) || 3;
+                break;
+        }
+        
+        // 计算延期日期
+        var postponedDate = new Date(today);
+        postponedDate.setDate(today.getDate() + delayDays);
+        
+        // 创建一次性推迟记录
+        var delayedTask = {
+            id: this.generateId(),
+            originalHouseworkId: this.currentDelayingHousework.id,
+            title: this.currentDelayingHousework.title,
+            description: this.currentDelayingHousework.description,
+            assignee: this.currentDelayingHousework.assignee,
+            assigneeName: this.currentDelayingHousework.assigneeName,
+            dueDate: postponedDate.toISOString(),
+            isDelayed: true,
+            frequency: 'once' // 一次性任务
+        };
+        
+        this.familyTasks.push(delayedTask);
+        
+        // 标记原家务为已延期状态，并设置正确的延期日期
+        this.currentDelayingHousework.isPostponed = true;
+        this.currentDelayingHousework.postponedDate = postponedDate.toISOString();
+        
+        this.saveData();
+        this.loadFamilyData();
+        this.closeModal('housework-delay-modal');
+        
+        var delayText = delayType === 'weekend' ? '本周末' : 
+                       delayType === 'next-weekend' ? '下个周末' : 
+                       delayDays + '天后';
+        this.showNotification('家务「' + this.currentDelayingHousework.title + '」已推迟至' + delayText, 'success');
+    }
+    
+    // 显示家务更换负责人模态框
+    showHouseworkReassignModal(houseworkId) {
+        var housework = this.houseworkReminders.find(hw => hw.id === houseworkId);
+        if (!housework) return;
+        
+        this.currentReassigningHousework = housework;
+        this.selectedReassignMemberId = null;
+        
+        var modal = document.getElementById('housework-reassign-modal');
+        var info = document.getElementById('housework-reassign-info');
+        
+        info.textContent = '请为「' + housework.title + '」选择新的负责人：';
+        
+        this.updateReassignMemberButtons();
+        modal.classList.add('active');
+    }
+    
+    // 更新更换负责人按钮
+    updateReassignMemberButtons() {
+        var container = document.getElementById('reassign-member-buttons');
+        container.innerHTML = '';
+        
+        this.members.forEach(member => {
+            // 跳过当前负责人
+            if (member.id === this.currentReassigningHousework.assignee) return;
+            
+            var button = document.createElement('button');
+            button.className = 'btn btn-outline member-btn';
+            button.textContent = member.name;
+            button.onclick = () => this.selectReassignMember(member.id);
+            container.appendChild(button);
+        });
+    }
+    
+    // 选择新负责人
+    selectReassignMember(memberId) {
+        this.selectedReassignMemberId = memberId;
+        
+        document.querySelectorAll('#reassign-member-buttons .member-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        var selectedBtn = Array.from(document.querySelectorAll('#reassign-member-buttons .member-btn')).find(btn => {
+            return btn.textContent === this.getMemberName(memberId);
+        });
+        if (selectedBtn) {
+            selectedBtn.classList.add('active');
+        }
+    }
+    
+    // 确认更换负责人
+    confirmHouseworkReassign() {
+        if (!this.currentReassigningHousework || !this.selectedReassignMemberId) {
+            this.showNotification('请选择新的负责人', 'warning');
+            return;
+        }
+        
+        var reassignType = document.querySelector('input[name="reassignType"]:checked').value;
+        var newMemberName = this.getMemberName(this.selectedReassignMemberId);
+        
+        if (reassignType === 'permanent') {
+            // 永久更换：直接修改原家务提醒
+            this.currentReassigningHousework.assignee = this.selectedReassignMemberId;
+            this.currentReassigningHousework.assigneeName = newMemberName;
+            this.showNotification('家务「' + this.currentReassigningHousework.title + '」已永久更换给' + newMemberName, 'success');
+        } else {
+            // 临时更换：创建一次性任务
+            var reassignedTask = {
+                id: this.generateId(),
+                title: this.currentReassigningHousework.title,
+                description: this.currentReassigningHousework.description,
+                assignee: this.selectedReassignMemberId,
+                assigneeName: newMemberName,
+                priority: 'medium',
+                status: 'todo',
+                createdAt: new Date().toISOString(),
+                isReassigned: true,
+                originalHouseworkId: this.currentReassigningHousework.id
+            };
+            
+            this.familyTasks.push(reassignedTask);
+            this.showNotification('家务「' + this.currentReassigningHousework.title + '」已临时更换给' + newMemberName, 'success');
+        }
+        
+        this.saveData();
+        this.loadFamilyData();
+        this.closeModal('housework-reassign-modal');
+    }
+    
+    // 获取今日完成的家务
+    getTodayCompletedHousework(memberId) {
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        return this.completedHousework.filter(record => {
+            if (record.assignee !== memberId) return false;
+            
+            var completedDate = new Date(record.completedDate);
+            completedDate.setHours(0, 0, 0, 0);
+            
+            return completedDate.toDateString() === today.toDateString();
+        });
+    }
+    
+    // 获取今日已延期的家务
+    getTodayPostponedHousework(memberId) {
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        return this.houseworkReminders.filter(hw => {
+            if (hw.assignee !== memberId) return false;
+            
+            // 检查是否已延期
+            if (!hw.isPostponed) return false;
+            
+            // 检查延期日期是否存在
+            if (!hw.postponedDate) return false;
+            
+            var postponedDate = new Date(hw.postponedDate);
+            postponedDate.setHours(0, 0, 0, 0);
+            
+            return postponedDate.toDateString() === today.toDateString();
+        });
+    }
+    
+    // 退回家务至待办状态
+    undoHousework(completedRecordId) {
+        // 找到完成记录
+        var recordIndex = this.completedHousework.findIndex(record => record.id === completedRecordId);
+        if (recordIndex === -1) {
+            this.showNotification('未找到完成记录', 'warning');
+            return;
+        }
+        
+        var record = this.completedHousework[recordIndex];
+        
+        // 从完成记录中移除
+        this.completedHousework.splice(recordIndex, 1);
+        
+        // 保存数据并刷新界面
+        this.saveData();
+        this.loadFamilyData();
+        
+        this.showNotification('家务「' + record.title + '」已退回待办', 'success');
+    }
+    
+    // 取消家务延期
+    cancelPostponedHousework(houseworkId) {
+        // 找到已延期的家务
+        var housework = this.houseworkReminders.find(hw => hw.id === houseworkId);
+        if (!housework || !housework.isPostponed) {
+            this.showNotification('未找到已延期的家务', 'warning');
+            return;
+        }
+        
+        // 取消延期状态
+        delete housework.isPostponed;
+        delete housework.postponedDate;
+        
+        // 保存数据并刷新界面
+        this.saveData();
+        this.loadFamilyData();
+        
+        this.showNotification('家务「' + housework.title + '」延期已取消', 'success');
     }
 }
 

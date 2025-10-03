@@ -78,8 +78,20 @@ body {
 }
 
 .family-actions {
-    display: flex;
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: 1fr;
+    gap: 0.5rem;
+}
+
+.family-actions .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.667rem;
+    border-radius: 12px;
+}
+
+.family-actions .btn i {
+    font-size: 1rem;
 }
 
 /* 家庭成员卡片 */
@@ -185,6 +197,16 @@ body {
 
 .task-group-title.abandoned::before {
     content: '❌';
+}
+
+.task-group-title.postponed {
+    background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%);
+    color: #7b1fa2;
+    border: 2px solid #ba68c8;
+}
+
+.task-group-title.postponed::before {
+    content: '📅';
 }
 
 .task-item {
@@ -392,6 +414,11 @@ body {
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
 }
 
+.stats-task-item.housework-stats-item {
+    border-left-color: #9c27b0;
+    background: linear-gradient(135deg, #f3e5f5 0%, #f8f9fa 100%);
+}
+
 .stats-task-title {
     font-weight: 600;
     color: #333;
@@ -407,6 +434,10 @@ body {
     font-size: 1.1rem;
     min-width: 60px;
     text-align: center;
+}
+
+.stats-task-item.housework-stats-item .stats-task-count {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
 }
 
 .stats-empty {
@@ -1836,6 +1867,376 @@ form {
     }
 }
 
+/* 家务设置页面样式 */
+.housework-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 16px rgba(79, 195, 247, 0.1);
+}
+
+.housework-header h2 {
+    color: #0288d1;
+    margin: 0;
+    flex: 1;
+    text-align: center;
+}
+
+.housework-container {
+    display: grid;
+    gap: 2rem;
+}
+
+.housework-controls {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 16px rgba(79, 195, 247, 0.1);
+    display: grid;
+    gap: 1.5rem;
+}
+
+.housework-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.housework-content {
+    display: grid;
+    gap: 2rem;
+}
+
+.housework-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 16px rgba(79, 195, 247, 0.1);
+}
+
+.housework-section h3 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 1.5rem 0;
+    color: #0288d1;
+    font-size: 1.3rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e1f5fe;
+}
+
+.housework-card-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.housework-card {
+    background: white;
+    border: 2px solid #e8eaf6;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.housework-card.today-reminder {
+    border-color: #9c27b0;
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+}
+
+.housework-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(156, 39, 176, 0.2);
+    border-color: #9c27b0;
+}
+
+.housework-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.housework-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #673ab7;
+    flex: 1;
+    margin-right: 1rem;
+}
+
+.housework-description {
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    font-style: italic;
+}
+
+.housework-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.housework-frequency {
+    background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+    color: #3f51b5;
+    padding: 0.3rem 0.8rem;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.housework-next-date {
+    color: #9c27b0;
+    font-weight: bold;
+}
+
+.housework-empty {
+    text-align: center;
+    color: #666;
+    padding: 3rem;
+    font-size: 1.1rem;
+}
+
+.housework-empty i {
+    font-size: 3rem;
+    color: #9c27b0;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+/* 主页面家务提醒样式 */
+.task-item.housework-reminder {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    border-left-color: #9c27b0;
+}
+
+.task-item.housework-reminder:hover {
+    background: linear-gradient(135deg, #e1bee7 0%, #ce93d8 100%);
+    box-shadow: 0 4px 16px rgba(156, 39, 176, 0.3);
+}
+
+.task-priority-badge.housework {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.housework-badge {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* 响应式设计 - 家务页面 */
+@media (max-width: 768px) {
+    .housework-controls {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .housework-actions {
+        justify-content: center;
+    }
+    
+    .housework-card {
+        padding: 1rem;
+    }
+    
+    .housework-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+    
+    .housework-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+        text-align: center;
+    }
+}
+
+/* 家务推迟和更换模态框样式 */
+.delay-options {
+    display: grid;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.delay-option {
+    transition: all 0.3s ease;
+}
+
+.delay-option.active {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+    color: white;
+    border-color: #9c27b0;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(156, 39, 176, 0.4);
+}
+
+.reassign-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reassign-options label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.reassign-options label:hover {
+    background: #e9ecef;
+}
+
+.reassign-options input[type="radio"] {
+    margin: 0;
+}
+
+.repeat-mode-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.repeat-mode-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.repeat-mode-option:hover {
+    background: #e9ecef;
+}
+
+.repeat-mode-option input[type="radio"] {
+    margin: 0;
+}
+
+.repeat-mode-description {
+    font-size: 0.9rem;
+    color: #666;
+    padding: 0.75rem;
+    background: #e3f2fd;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
+.repeat-mode-description .mode-desc {
+    margin: 0.25rem 0;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-body p {
+    margin-bottom: 1rem;
+    color: #666;
+    font-size: 1rem;
+}
+
+/* 家务完成列表样式 */
+.completed-housework-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 16px rgba(79, 195, 247, 0.1);
+    margin-top: 2rem;
+}
+
+.completed-housework-item {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e8eaf6 100%);
+    border: 2px solid #d1c4e9;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.completed-housework-info {
+    flex: 1;
+}
+
+.completed-housework-title {
+    font-weight: bold;
+    color: #673ab7;
+    margin-bottom: 0.5rem;
+}
+
+.completed-housework-date {
+    font-size: 0.9rem;
+    color: #9c27b0;
+}
+
+.completed-badge {
+    background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.postponed-housework-item {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    border: 2px solid #ef9a9a;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.postponed-badge {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* 退回按钮样式 */
+.btn-mini.undo-btn {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+    border: none;
+}
+
 /* 背诵历史记录样式 */
 .memory-history-container {
     padding: 1.5rem;
@@ -1927,6 +2328,41 @@ form {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.3rem;
+}
+
+.memory-record-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.memory-record-delete {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.6rem;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+}
+
+.memory-record-delete:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
 }
 
 .memory-record:hover {
@@ -1941,9 +2377,19 @@ form {
     color: #c62828;
 }
 
+.memory-record.priority-high .memory-record-delete:hover {
+    background: rgba(244, 67, 54, 0.1);
+    color: #d32f2f;
+}
+
 .memory-record.priority-medium {
     border-left-color: #ff9800;
     background: #fff3e0;
+    color: #f57c00;
+}
+
+.memory-record.priority-medium .memory-record-delete:hover {
+    background: rgba(255, 152, 0, 0.1);
     color: #f57c00;
 }
 
@@ -1951,6 +2397,11 @@ form {
     border-left-color: #4caf50;
     background: #e8f5e8;
     color: #2e7d32;
+}
+
+.memory-record.priority-low .memory-record-delete:hover {
+    background: rgba(76, 175, 80, 0.1);
+    color: #388e3c;
 }
 
 /* 响应式设计 - 历史记录 */

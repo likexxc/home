@@ -39,6 +39,10 @@
                             <i class="fas fa-brain"></i>
                             我的背诵
                         </button>
+                        <button id="housework-btn" class="btn btn-cool">
+                            <i class="fas fa-home"></i>
+                            家务设置
+                        </button>
                         <button id="add-member-btn" class="btn btn-cool">
                             <i class="fas fa-user-plus"></i>
                             添加成员
@@ -234,6 +238,47 @@
                 </div>
             </div>
             
+            <!-- 家务设置页面 -->
+            <div id="housework-page" class="page">
+                <div class="housework-header">
+                    <button id="back-to-main-from-housework" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i>
+                        返回主页
+                    </button>
+                    <h2>家务设置</h2>
+                </div>
+                
+                <div class="housework-container">
+                    <div class="housework-controls">
+                        <div class="member-buttons">
+                            <label>选择成员：</label>
+                            <div id="housework-member-buttons" class="member-button-group">
+                                <!-- 成员按钮将在这里动态生成 -->
+                            </div>
+                        </div>
+                        
+                        <div class="housework-actions">
+                            <button id="add-housework-btn" class="btn btn-cool" disabled>
+                                <i class="fas fa-plus"></i>
+                                添加家务提醒
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="housework-content">
+                        <div id="housework-list-section" class="housework-section">
+                            <h3>家务提醒列表</h3>
+                            <div id="housework-list" class="housework-card-list">
+                                <div class="no-member-selected">
+                                    <i class="fas fa-broom"></i>
+                                    <p>请选择成员查看家务提醒</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 添加任务到日期模态框 -->
             <div id="date-task-modal" class="modal">
                 <div class="modal-content">
@@ -327,7 +372,125 @@
                 </div>
             </div>
             
-            <!-- 背诵历史记录模态框 -->
+            <!-- 添加家务提醒模态框 -->
+            <div id="housework-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="housework-modal-title">添加家务提醒</h3>
+                        <button class="close-btn" data-modal="housework-modal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <form id="housework-form">
+                        <div class="form-group">
+                            <label for="housework-title">家务名称</label>
+                            <input type="text" id="housework-title" required placeholder="请输入家务名称">
+                        </div>
+                        <div class="form-group">
+                            <label for="housework-description">描述说明</label>
+                            <textarea id="housework-description" placeholder="请输入家务描述说明" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="housework-frequency">提醒频率</label>
+                            <select id="housework-frequency" required>
+                                <option value="daily">每天</option>
+                                <option value="weekly">每周</option>
+                                <option value="monthly">每月</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="custom-frequency-group" style="display: none;">
+                            <label for="custom-days">自定义天数间隔</label>
+                            <input type="number" id="custom-days" min="1" max="365" value="7" placeholder="请输入天数">
+                        </div>
+                        <div class="form-group" id="repeat-mode-group">
+                            <label>重复模式</label>
+                            <div class="repeat-mode-options">
+                                <label class="repeat-mode-option">
+                                    <input type="radio" name="repeatMode" value="fixed" checked>
+                                    <span>固定日期（按设定日期重复）</span>
+                                </label>
+                                <label class="repeat-mode-option">
+                                    <input type="radio" name="repeatMode" value="flexible">
+                                    <span>非固定日期（从完成日计算）</span>
+                                </label>
+                            </div>
+                            <div class="repeat-mode-description">
+                                <div class="mode-desc fixed-desc">固定日期：按照设定的开始日期固定间隔提醒，不受完成时间影响。</div>
+                                <div class="mode-desc flexible-desc" style="display: none;">非固定日期：每次完成后，从完成日期开始计算下次提醒。</div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="housework-start-date">开始日期</label>
+                            <input type="date" id="housework-start-date" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" data-modal="housework-modal">取消</button>
+                            <button type="submit" class="btn btn-cool">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 家务推迟模态框 -->
+            <div id="housework-delay-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="housework-delay-modal-title">推迟家务</h3>
+                        <button class="close-btn" data-modal="housework-delay-modal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="housework-delay-info">请选择推迟时间：</p>
+                        <div class="delay-options">
+                            <button class="btn btn-outline delay-option" data-delay="weekend">推迟至本周末</button>
+                            <button class="btn btn-outline delay-option" data-delay="next-weekend">推迟至下个周末</button>
+                            <button class="btn btn-outline delay-option" data-delay="custom">自定义天数</button>
+                        </div>
+                        <div id="custom-delay-group" class="form-group" style="display: none; margin-top: 1rem;">
+                            <label for="custom-delay-days">推迟天数</label>
+                            <input type="number" id="custom-delay-days" min="1" max="30" value="3" placeholder="请输入推迟天数">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" data-modal="housework-delay-modal">取消</button>
+                        <button type="button" id="confirm-delay" class="btn btn-cool">确认推迟</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 家务更换负责人模态框 -->
+            <div id="housework-reassign-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="housework-reassign-modal-title">更换负责人</h3>
+                        <button class="close-btn" data-modal="housework-reassign-modal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="housework-reassign-info">请选择新的负责人：</p>
+                        <div id="reassign-member-buttons" class="member-button-group">
+                            <!-- 成员按钮将在这里动态生成 -->
+                        </div>
+                        <div class="reassign-options" style="margin-top: 1rem;">
+                            <label>
+                                <input type="radio" name="reassignType" value="temporary" checked>
+                                仅一次（临时更换）
+                            </label>
+                            <label>
+                                <input type="radio" name="reassignType" value="permanent">
+                                永久更换
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" data-modal="housework-reassign-modal">取消</button>
+                        <button type="button" id="confirm-reassign" class="btn btn-cool">确认更换</button>
+                    </div>
+                </div>
+            </div>
             <div id="memory-history-modal" class="modal">
                 <div class="modal-content modal-large">
                     <div class="modal-header">
