@@ -539,6 +539,7 @@ class FamilyTaskSystem {
         return dayElement;
     }
 
+    // 创建主页面任务元素
     createDayTaskElement(task) {
         var taskElement = document.createElement('div');
         taskElement.className = 'day-task-item priority-' + task.priority;
@@ -850,7 +851,7 @@ class FamilyTaskSystem {
         // 获取今日完成的家务
         var todayCompletedHousework = this.getTodayCompletedHousework(member.id);
         
-        // 获取今日已延期的家务
+        // 获取今日已延期的家务（延期日期为今天的）
         var todayPostponedHousework = this.getTodayPostponedHousework(member.id);
         
         // 将今日的家务提醒添加到今日待办中（不包括延期的家务）
@@ -902,6 +903,11 @@ class FamilyTaskSystem {
             var isCompletedHousework = item.houseworkId !== undefined;
             // 判断是否是已延期的家务
             var isPostponedHousework = item.isPostponed !== undefined;
+            // 判断是否为延期任务（在延期目标日期显示的）
+            var isDelayedTask = item.isDelayedReminder || item.isDelayedTask;
+            // 判断是否为前一天未完成的任务
+            var isPreviousDayUnfinished = item.isPreviousDayUnfinished;
+            
             var priorityEmoji = { 'high': '🔴', 'medium': '🟡', 'low': '🟢' };
             var actions = '';
             
@@ -915,6 +921,8 @@ class FamilyTaskSystem {
                     '<div class="task-content">' +
                         '<div class="task-title">' + item.title +
                             '<span class="task-priority-badge housework">🏠</span>' +
+                            (isDelayedTask ? '<span class="delayed-badge">延期</span>' : '') +
+                            (isPreviousDayUnfinished ? '<span class="previous-day-unfinished-badge">昨日未完成</span>' : '') +
                         '</div>' + actions +
                     '</div>' +
                 '</div>';
@@ -942,6 +950,8 @@ class FamilyTaskSystem {
                     '<div class="task-content">' +
                         '<div class="task-title">' + item.title +
                             '<span class="task-priority-badge housework">🏠</span>' +
+                            (isDelayedTask ? '<span class="delayed-badge">延期</span>' : '') +
+                            (isPreviousDayUnfinished ? '<span class="previous-day-unfinished-badge">昨日未完成</span>' : '') +
                         '</div>' + actions +
                     '</div>' +
                 '</div>';
@@ -1340,13 +1350,8 @@ class FamilyTaskSystem {
             var todayDate = new Date(today);
             todayDate.setHours(0, 0, 0, 0);
             
-            // 如果卡片曾经被完成过，则从最后一次完成日期开始计算
-            if (card.completedAt) {
-                baseDate = new Date(card.completedAt);
-            } else {
-                // 否则从开始日期开始计算
-                baseDate = new Date(card.startDate);
-            }
+            // 从开始日期开始计算
+            baseDate = new Date(card.startDate);
             
             baseDate.setHours(0, 0, 0, 0);
             
@@ -1701,7 +1706,7 @@ class FamilyTaskSystem {
         return dayElement;
     }
     
-    // 获取指定日期的背诵记录
+    // 获取指定日期的背诵记录（用于历史记录）
     getMemoryRecordsForDate(date, memberId) {
         var dateStr = date.toDateString();
         return this.memoryCards.filter(card => {
@@ -1826,9 +1831,16 @@ class FamilyTaskSystem {
             nextReminderText = '下次提醒：' + (nextReminderDate ? new Date(nextReminderDate).toLocaleDateString() : '无');
         }
         
+        // 检查是否为延期任务（在延期目标日期显示的）
+        var isDelayedTask = housework.isDelayedReminder || housework.isDelayedTask;
+        var delayedBadge = isDelayedTask ? '<span class="delayed-badge">延期</span>' : '';
+        
+        // 检查是否为前一天未完成的任务
+        var previousDayUnfinishedBadge = housework.isPreviousDayUnfinished ? '<span class="previous-day-unfinished-badge">昨日未完成</span>' : '';
+        
         return '<div class="housework-card' + (isToday ? ' today-reminder' : '') + '">' +
                 '<div class="housework-header">' +
-                    '<div class="housework-title">' + housework.title + '</div>' +
+                    '<div class="housework-title">' + housework.title + delayedBadge + previousDayUnfinishedBadge + '</div>' +
                     '<div class="housework-actions">' +
                         '<button class="btn btn-small btn-cool" onclick="familyTaskSystem.showHouseworkModal(\'' + housework.id + '\')" title="修改">' +
                             '<i class="fas fa-edit"></i>' +
@@ -2031,6 +2043,10 @@ class FamilyTaskSystem {
         var today = new Date();
         today.setHours(0, 0, 0, 0);
         
+        // 计算昨天的日期
+        var yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
         return this.houseworkReminders.filter(hw => {
             if (hw.assignee !== memberId) return false;
             
@@ -2042,19 +2058,37 @@ class FamilyTaskSystem {
             
             if (isCompletedToday) return false;
             
-            // 检查是否已延期（已延期的家务不应再显示在待办中，而应显示在延期组中）
-            if (hw.isPostponed) {
-                // 检查延期日期是否是今天
-                if (hw.postponedDate) {
-                    var postponedDate = new Date(hw.postponedDate);
-                    postponedDate.setHours(0, 0, 0, 0);
-                    // 如果延期日期是今天，则不应显示在今日待办中（而应显示在延期组中）
-                    if (postponedDate.toDateString() === today.toDateString()) {
-                        return false;
-                    }
+            // 检查是否已延期
+            if (hw.isPostponed && hw.postponedDate) {
+                var postponedDate = new Date(hw.postponedDate);
+                postponedDate.setHours(0, 0, 0, 0);
+                // 如果延期日期是今天，则显示在今日待办中，并标记为延期任务
+                if (postponedDate.toDateString() === today.toDateString()) {
+                    // 标记为延期任务，以便在界面中显示延期标识
+                    hw.isDelayedReminder = true;
+                    return true;
                 }
                 // 如果延期日期不是今天，则不显示在今日待办中
                 return false;
+            }
+            
+            // 新增：检查前一天未完成的家务（每天家务除外）
+            if (hw.frequency !== 'daily') {
+                // 检查该家务是否应该在昨天提醒
+                if (this.isHouseworkDueOnDate(hw, yesterday)) {
+                    // 检查昨天是否已完成该家务
+                    var isCompletedYesterday = this.completedHousework.some(record => {
+                        return record.houseworkId === hw.id && 
+                               new Date(record.completedDate).toDateString() === yesterday.toDateString();
+                    });
+                    
+                    // 如果昨天应该提醒但未完成，则今天显示该家务
+                    if (!isCompletedYesterday) {
+                        // 标记为前一天未完成的任务
+                        hw.isPreviousDayUnfinished = true;
+                        return true;
+                    }
+                }
             }
             
             // 根据重复模式选择计算基准日期
@@ -2086,6 +2120,39 @@ class FamilyTaskSystem {
             // 检查今天是否应该提醒（从基准日期计算）
             return (daysDiff % interval) === 0;
         });
+    }
+    
+    // 检查家务是否应在指定日期提醒
+    isHouseworkDueOnDate(housework, targetDate) {
+        // 根据重复模式选择计算基准日期
+        var baseDate;
+        if (housework.repeatMode === 'flexible' && housework.lastCompletedDate) {
+            // 非固定日期：从最后完成日期开始计算
+            baseDate = new Date(housework.lastCompletedDate);
+        } else {
+            // 固定日期：从开始日期开始计算
+            baseDate = new Date(housework.startDate);
+        }
+        
+        baseDate.setHours(0, 0, 0, 0);
+        targetDate.setHours(0, 0, 0, 0);
+        
+        var daysDiff = Math.floor((targetDate - baseDate) / (1000 * 60 * 60 * 24));
+        
+        // 如果还没到开始日期，不提醒
+        if (daysDiff < 0) return false;
+        
+        var interval;
+        switch(housework.frequency) {
+            case 'daily': interval = 1; break;
+            case 'weekly': interval = 7; break;
+            case 'monthly': interval = 30; break;
+            case 'custom': interval = housework.customDays || 7; break;
+            default: return false;
+        }
+        
+        // 检查目标日期是否应该提醒（从基准日期计算）
+        return (daysDiff % interval) === 0;
     }
     
     // 完成家务
@@ -2180,24 +2247,12 @@ class FamilyTaskSystem {
         var postponedDate = new Date(today);
         postponedDate.setDate(today.getDate() + delayDays);
         
-        // 创建一次性推迟记录
-        var delayedTask = {
-            id: this.generateId(),
-            originalHouseworkId: this.currentDelayingHousework.id,
-            title: this.currentDelayingHousework.title,
-            description: this.currentDelayingHousework.description,
-            assignee: this.currentDelayingHousework.assignee,
-            assigneeName: this.currentDelayingHousework.assigneeName,
-            dueDate: postponedDate.toISOString(),
-            isDelayed: true,
-            frequency: 'once' // 一次性任务
-        };
-        
-        this.familyTasks.push(delayedTask);
-        
+        // 不再创建一次性推迟记录，而是直接标记原家务为已延期状态
         // 标记原家务为已延期状态，并设置正确的延期日期
         this.currentDelayingHousework.isPostponed = true;
         this.currentDelayingHousework.postponedDate = postponedDate.toISOString();
+        // 添加延期标识
+        this.currentDelayingHousework.isDelayedTask = true;
         
         this.saveData();
         this.loadFamilyData();
